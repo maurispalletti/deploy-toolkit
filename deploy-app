@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+set -euo pipefail
+echo "deploy-app v0.1 (placeholder)"
+echo "Usage: deploy-app <path-to-app>"
+exit 0

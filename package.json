@@ -1,0 +1,11 @@
+{
+  "name": "deploy-toolkit",
+  "version": "0.1.0",
+  "description": "Deploy small vibecoded apps to Firebase with one command.",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "node --test 'lib/**/*.test.mjs'"
+  }
+}

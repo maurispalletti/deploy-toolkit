@@ -1,0 +1,4 @@
+node_modules/
+.DS_Store
+*.log
+deploy-app.config.local.json
