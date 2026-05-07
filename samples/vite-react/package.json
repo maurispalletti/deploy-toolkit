@@ -1,0 +1,8 @@
+{
+  "name": "sample-vite-react",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "vite build" },
+  "dependencies": { "react": "^18.0.0", "react-dom": "^18.0.0" },
+  "devDependencies": { "vite": "^5.0.0" }
+}

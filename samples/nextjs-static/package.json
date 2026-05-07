@@ -1,0 +1,6 @@
+{
+  "name": "sample-nextjs",
+  "private": true,
+  "scripts": { "build": "next build && next export" },
+  "dependencies": { "next": "^14.0.0", "react": "^18.0.0", "react-dom": "^18.0.0" }
+}
