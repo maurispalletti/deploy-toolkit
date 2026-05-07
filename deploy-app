@@ -1,5 +1,34 @@
 #!/usr/bin/env bash
+# deploy-app — orchestrates the full deploy flow.
 set -euo pipefail
-echo "deploy-app v0.1 (placeholder)"
-echo "Usage: deploy-app <path-to-app>"
-exit 0
+
+APP_DIR="${1:-.}"
+APP_DIR="$(cd "$APP_DIR" && pwd)"
+TOOLKIT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+echo "Hi! Let's get this app on the internet."
+echo "App folder: $APP_DIR"
+echo
+
+# Stage 1: Preflight
+"$TOOLKIT_DIR/stages/preflight.sh"
+
+# Stage 2: Brain (inspector + interview + planner) — writes deploy-app.config.json
+echo
+echo "▸ Looking at your app..."
+node "$TOOLKIT_DIR/lib/brain.mjs" "$APP_DIR" >/dev/null
+
+# Stage 3: Provision
+echo
+"$TOOLKIT_DIR/stages/provision.sh" "$APP_DIR"
+
+# Stage 4: Build
+echo
+"$TOOLKIT_DIR/stages/build.sh" "$APP_DIR"
+
+# Stage 5: Deploy
+echo
+"$TOOLKIT_DIR/stages/deploy.sh" "$APP_DIR"
+
+# Stage 6: Report
+"$TOOLKIT_DIR/stages/report.sh" "$APP_DIR"
