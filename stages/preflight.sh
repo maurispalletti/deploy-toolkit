@@ -40,4 +40,11 @@ if ! firebase projects:list >/dev/null 2>&1; then
   firebase login
 fi
 
+# Show which account is active so the user can catch wrong-account issues early.
+ACTIVE_ACCOUNT=$(firebase login:list 2>/dev/null | awk '/User:/ {print $2; exit}')
+if [ -n "$ACTIVE_ACCOUNT" ]; then
+  printf "  Logged in as: %s\n" "$ACTIVE_ACCOUNT"
+  printf "  If this is the wrong account, run: firebase logout && firebase login\n"
+fi
+
 step "All preflight checks passed"

@@ -32,7 +32,7 @@ echo
 # Stage 2: Brain (inspector + interview + planner) — writes deploy-app.config.json
 echo
 echo "▸ Looking at your app..."
-node "$TOOLKIT_DIR/lib/brain.mjs" "$APP_DIR" >/dev/null
+node "$TOOLKIT_DIR/lib/brain.mjs" "$APP_DIR"
 
 # Stage 3: Provision
 echo
