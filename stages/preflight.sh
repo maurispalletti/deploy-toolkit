@@ -13,15 +13,26 @@ check_cmd() {
   fi
 }
 
-step "Checking Node.js (>= 20)"
-check_cmd node "https://nodejs.org/"
+step "Checking Node.js (>= 22)"
+check_cmd node "https://nodejs.org/ (or use nvm: 'nvm install 22')"
 node_major=$(node -p 'process.versions.node.split(".")[0]')
-if [ "$node_major" -lt 20 ]; then
-  fail "Node $node_major found; need 20+. Upgrade at https://nodejs.org/"
+if [ "$node_major" -lt 22 ]; then
+  fail "Node $node_major found; need 22+. The orchestrator tries to switch via nvm automatically — install nvm or upgrade Node manually."
 fi
 
 step "Checking firebase CLI"
-check_cmd firebase "npm install -g firebase-tools"
+if ! command -v firebase >/dev/null 2>&1; then
+  printf "  Firebase CLI not found. Install it now via 'npm install -g firebase-tools'? [Y/n] "
+  read -r reply
+  case "${reply:-Y}" in
+    [Nn]*)
+      fail "Firebase CLI required. Install manually: npm install -g firebase-tools"
+      ;;
+    *)
+      npm install -g firebase-tools || fail "Install failed. Try manually: npm install -g firebase-tools"
+      ;;
+  esac
+fi
 
 step "Checking firebase login"
 if ! firebase projects:list >/dev/null 2>&1; then

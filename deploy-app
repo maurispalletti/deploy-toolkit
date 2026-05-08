@@ -6,6 +6,22 @@ APP_DIR="${1:-.}"
 APP_DIR="$(cd "$APP_DIR" && pwd)"
 TOOLKIT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Auto-switch to the Node version pinned in .nvmrc, if nvm is available.
+# Allows users with a system Node < 22 to still run the script without manual `nvm use`.
+if [ -f "$TOOLKIT_DIR/.nvmrc" ]; then
+  NVM_SH="${NVM_DIR:-$HOME/.nvm}/nvm.sh"
+  if [ -s "$NVM_SH" ]; then
+    # shellcheck disable=SC1090
+    . "$NVM_SH"
+    NVMRC_VERSION="$(cat "$TOOLKIT_DIR/.nvmrc")"
+    if ! nvm use "$NVMRC_VERSION" >/dev/null 2>&1; then
+      echo "▸ Node $NVMRC_VERSION not installed. Installing via nvm..."
+      nvm install "$NVMRC_VERSION" >/dev/null
+      nvm use "$NVMRC_VERSION" >/dev/null
+    fi
+  fi
+fi
+
 echo "Hi! Let's get this app on the internet."
 echo "App folder: $APP_DIR"
 echo
