@@ -17,12 +17,21 @@ NEEDS_FN=$(node -p "require('$CONFIG').functions !== null")
 
 cd "$APP_DIR"
 
-# Create the Firebase project (idempotent: skip if exists)
-if ! firebase projects:list 2>/dev/null | grep -q " $PROJECT_ID "; then
+# Create the Firebase project (idempotent: skip if exists).
+# Capture output first to avoid `set -o pipefail` flagging SIGPIPE when grep -q
+# closes stdin early. Use --json for stable parsing across CLI versions.
+PROJECT_LIST_JSON=$(firebase projects:list --json 2>/dev/null || true)
+PROJECT_EXISTS=$(node -e '
+const data = JSON.parse(process.argv[1] || "{}");
+const ids = (data.result || []).map(p => p.projectId);
+process.stdout.write(ids.includes(process.argv[2]) ? "yes" : "no");
+' "$PROJECT_LIST_JSON" "$PROJECT_ID")
+
+if [ "$PROJECT_EXISTS" = "yes" ]; then
+  echo "▸ Project $PROJECT_ID already exists; reusing"
+else
   echo "▸ Creating Firebase project: $PROJECT_ID"
   firebase projects:create "$PROJECT_ID" --display-name "$PROJECT_ID"
-else
-  echo "▸ Project $PROJECT_ID already exists; reusing"
 fi
 
 # Set as the active project
