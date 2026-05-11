@@ -130,3 +130,14 @@ body {
 }
 .insp-grid dt { color: var(--muted); }
 .insp-grid dd { margin: 0; color: var(--text); }
+.field { margin-bottom: 18px; }
+.field label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+.field input[type=text] {
+  width: 100%; padding: 10px 14px;
+  background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-input);
+  font: inherit;
+}
+.field input[type=text]:focus { outline: none; border-color: var(--orange); }
+.help { font-size: 12px; color: var(--muted); margin-top: 6px; }
