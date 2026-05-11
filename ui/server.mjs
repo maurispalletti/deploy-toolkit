@@ -6,6 +6,7 @@ import { findFreePort } from "./server/port.mjs";
 import { mountPreflight } from "./server/api/preflight.mjs";
 import { mountBrain } from "./server/api/brain.mjs";
 import { mountRunStage } from "./server/api/run-stage.mjs";
+import { mountAuth } from "./server/api/auth.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const APP_DIR = process.argv[2] || process.cwd();
@@ -13,9 +14,11 @@ const APP_DIR = process.argv[2] || process.cwd();
 async function main() {
   const app = express();
   app.use(express.json());
+  const serverRef = { current: null };
   mountPreflight(app);
   mountBrain(app);
   mountRunStage(app);
+  mountAuth(app, serverRef);
   app.use(express.static(join(__dirname, "dist")));
 
   app.get("/api/app-dir", (_req, res) => res.json({ appDir: APP_DIR }));
@@ -24,7 +27,7 @@ async function main() {
   app.get("*", (_req, res) => res.sendFile(join(__dirname, "dist", "index.html")));
 
   const port = await findFreePort();
-  app.listen(port, () => {
+  serverRef.current = app.listen(port, () => {
     const url = `http://localhost:${port}/`;
     console.log(`▸ deploy-toolkit UI: ${url}`);
     spawn("open", [url]).on("error", () => {
