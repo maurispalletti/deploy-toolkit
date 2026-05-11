@@ -2,3 +2,10 @@ node_modules/
 .DS_Store
 *.log
 deploy-app.config.local.json
+
+# Smoke-test artifacts generated when the wizard runs against samples/
+samples/**/deploy-app.config.json
+samples/**/firebase.json
+samples/**/.firebaserc
+samples/**/.firebase/
+samples/**/firestore.rules
