@@ -34,6 +34,11 @@ export async function postLogin() {
   return r.json();
 }
 
+export async function pickFolder() {
+  const r = await fetch("/api/pick-folder", { method: "POST" });
+  return r.json();
+}
+
 export async function postQuit() {
   try { await fetch("/api/quit", { method: "POST" }); } catch {}
 }

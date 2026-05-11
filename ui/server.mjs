@@ -7,9 +7,12 @@ import { mountPreflight } from "./server/api/preflight.mjs";
 import { mountBrain } from "./server/api/brain.mjs";
 import { mountRunStage } from "./server/api/run-stage.mjs";
 import { mountAuth } from "./server/api/auth.mjs";
+import { mountPicker } from "./server/api/picker.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const APP_DIR = process.argv[2] || process.cwd();
+// APP_DIR may be empty — the wizard's Welcome page lets the user pick a folder
+// via the native macOS dialog when no path was passed on the command line.
+const APP_DIR = process.argv[2] || "";
 
 async function main() {
   const app = express();
@@ -19,6 +22,7 @@ async function main() {
   mountBrain(app);
   mountRunStage(app);
   mountAuth(app, serverRef);
+  mountPicker(app);
   app.use(express.static(join(__dirname, "dist")));
 
   app.get("/api/app-dir", (_req, res) => res.json({ appDir: APP_DIR }));

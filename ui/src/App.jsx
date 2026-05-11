@@ -10,22 +10,28 @@ import Done from "./pages/Done.jsx";
 import Bootstrap from "./pages/Bootstrap.jsx";
 import { getAppDir } from "./api.js";
 
-const PAGES = ["welcome", "preflight", "inspector", "questions", "plan", "progress", "done"];
-
 export default function App() {
-  const [appDir, setAppDir] = useState(null);
+  const [appDir, setAppDir] = useState("");
+  const [loaded, setLoaded] = useState(false);
   const [step, setStep] = useState(1);
   const [inspection, setInspection] = useState(null);
   const [answers, setAnswers] = useState(null);
   const [plan, setPlan] = useState(null);
 
-  useEffect(() => { getAppDir().then(setAppDir); }, []);
-
   useEffect(() => {
-    if (!appDir) return;
+    getAppDir().then((d) => {
+      setAppDir(d || "");
+      setLoaded(true);
+    });
+  }, []);
+
+  // If we have an appDir AND we're on the welcome page AND a saved config exists,
+  // jump straight to Done. Only check when appDir changes — not after the user picks.
+  useEffect(() => {
+    if (!appDir || step !== 1) return;
     import("./api.js").then(({ getExistingConfig }) => {
-      getExistingConfig(appDir).then(({ existing, plan }) => {
-        if (existing) { setPlan(plan); setStep(7); }
+      getExistingConfig(appDir).then(({ existing, plan: existingPlan }) => {
+        if (existing) { setPlan(existingPlan); setStep(7); }
       });
     });
   }, [appDir]);
@@ -33,12 +39,18 @@ export default function App() {
   const next = () => setStep(s => Math.min(7, s + 1));
   const back = () => setStep(s => Math.max(1, s - 1));
 
-  if (!appDir) return <div className="container">Loading…</div>;
+  if (!loaded) return <div className="container">Loading…</div>;
 
   return (
     <div className="container page-enter" key={step}>
       <StepHeader current={step} />
-      {step === 1 && <Welcome appDir={appDir} onNext={next} />}
+      {step === 1 && (
+        <Welcome
+          appDir={appDir}
+          onAppDirChange={setAppDir}
+          onNext={next}
+        />
+      )}
       {step === 2 && <Preflight onBack={back} onNext={next} />}
       {step === 3 && <Inspector appDir={appDir} onBack={back} onConfirm={(i) => { setInspection(i); next(); }} />}
       {step === 4 && <Questions inspection={inspection} defaults={answers} onBack={back} onNext={(a) => { setAnswers(a); next(); }} />}

@@ -13,8 +13,16 @@ for arg in "$@"; do
     *) APP_DIR="$arg" ;;
   esac
 done
-APP_DIR="${APP_DIR:-.}"
-APP_DIR="$(cd "$APP_DIR" && pwd)"
+
+# In CLI mode the app path is required (default to cwd if blank).
+# In UI mode it's optional — if blank, the wizard's Welcome page lets
+# the user pick a folder via the native macOS dialog.
+if [ "$USE_CLI" = "true" ] && [ -z "$APP_DIR" ]; then
+  APP_DIR="."
+fi
+if [ -n "$APP_DIR" ]; then
+  APP_DIR="$(cd "$APP_DIR" && pwd)"
+fi
 TOOLKIT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Auto-switch to the Node version pinned in .nvmrc, if nvm is available.
