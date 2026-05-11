@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 # deploy-app — orchestrates the full deploy flow.
+# By default opens the wizard UI in the user's browser.
+# Pass --cli to run the existing terminal-only flow.
 set -euo pipefail
 
-APP_DIR="${1:-.}"
+USE_CLI=false
+APP_DIR=""
+for arg in "$@"; do
+  case "$arg" in
+    --cli) USE_CLI=true ;;
+    -*) printf "Unknown flag: %s\n" "$arg" >&2; exit 1 ;;
+    *) APP_DIR="$arg" ;;
+  esac
+done
+APP_DIR="${APP_DIR:-.}"
 APP_DIR="$(cd "$APP_DIR" && pwd)"
 TOOLKIT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Auto-switch to the Node version pinned in .nvmrc, if nvm is available.
-# Allows users with a system Node < 22 to still run the script without manual `nvm use`.
 if [ -f "$TOOLKIT_DIR/.nvmrc" ]; then
   NVM_SH="${NVM_DIR:-$HOME/.nvm}/nvm.sh"
   if [ -s "$NVM_SH" ]; then
@@ -22,29 +32,32 @@ if [ -f "$TOOLKIT_DIR/.nvmrc" ]; then
   fi
 fi
 
-echo "Hi! Let's get this app on the internet."
-echo "App folder: $APP_DIR"
-echo
+if [ "$USE_CLI" = "true" ]; then
+  echo "Hi! Let's get this app on the internet."
+  echo "App folder: $APP_DIR"
+  echo
+  "$TOOLKIT_DIR/stages/preflight.sh"
+  echo
+  echo "▸ Looking at your app..."
+  node "$TOOLKIT_DIR/lib/brain.mjs" "$APP_DIR"
+  echo
+  "$TOOLKIT_DIR/stages/provision.sh" "$APP_DIR"
+  echo
+  "$TOOLKIT_DIR/stages/build.sh" "$APP_DIR"
+  echo
+  "$TOOLKIT_DIR/stages/deploy.sh" "$APP_DIR"
+  "$TOOLKIT_DIR/stages/report.sh" "$APP_DIR"
+  exit 0
+fi
 
-# Stage 1: Preflight
-"$TOOLKIT_DIR/stages/preflight.sh"
-
-# Stage 2: Brain (inspector + interview + planner) — writes deploy-app.config.json
-echo
-echo "▸ Looking at your app..."
-node "$TOOLKIT_DIR/lib/brain.mjs" "$APP_DIR"
-
-# Stage 3: Provision
-echo
-"$TOOLKIT_DIR/stages/provision.sh" "$APP_DIR"
-
-# Stage 4: Build
-echo
-"$TOOLKIT_DIR/stages/build.sh" "$APP_DIR"
-
-# Stage 5: Deploy
-echo
-"$TOOLKIT_DIR/stages/deploy.sh" "$APP_DIR"
-
-# Stage 6: Report
-"$TOOLKIT_DIR/stages/report.sh" "$APP_DIR"
+# Default: spawn UI server
+cd "$TOOLKIT_DIR/ui"
+if [ ! -d node_modules ]; then
+  echo "▸ Installing UI dependencies (first run only)..."
+  npm install
+fi
+if [ ! -d dist ]; then
+  echo "▸ Building UI (first run only)..."
+  npm run build
+fi
+exec node server.mjs "$APP_DIR"
