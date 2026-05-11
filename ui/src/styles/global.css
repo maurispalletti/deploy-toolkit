@@ -123,3 +123,10 @@ body {
 .stage-dot.error { background: var(--red); }
 @keyframes stage-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 .stage-log-wrap { padding: 0 14px 12px; }
+.insp-grid {
+  display: grid; grid-template-columns: 140px 1fr; gap: 8px 16px;
+  padding: 14px 16px; border: 1px solid var(--border);
+  background: var(--bg-2); border-radius: 10px; font-size: 14px;
+}
+.insp-grid dt { color: var(--muted); }
+.insp-grid dd { margin: 0; color: var(--text); }
