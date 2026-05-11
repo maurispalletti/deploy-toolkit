@@ -59,6 +59,14 @@ Friendliest install for non-tech users: `npx deploy-toolkit`. Requires publishin
 
 The wizard currently confirms the folder the user passed on the CLI. Adding drag-and-drop or a native folder picker would let the user change the target mid-wizard. The browser File System Access API works in Chrome/Edge but not Firefox/Safari.
 
+### C4 — GitHub persistence for the user's app — **P1**
+
+A non-technical user with a vibecoded app on their laptop doesn't have version control. If they delete the folder, the app is gone. Offer a new optional wizard step between Plan and Build: "Would you like to save this code to GitHub?" — uses `gh` CLI with the same install-on-consent treatment we did for `firebase`. Asks for repo name + visibility (private default). Creates the repo and pushes the initial commit. Subsequent redeploys also push. Real feature, real value; should land before this tool sees external users.
+
+### C5 — "I don't know what my app needs" path — **P2**
+
+The inspector already detects framework/backend/secrets from code, so the user doesn't strictly need to know. The remaining gap is the wizard's plain-language questions ("Will users sign in?", "Does the app need a database?"). If the user can't answer, add an "I'm not sure" option per question that picks the safest default (no auth, no DB, Shape A) and shows a follow-up: "You can add this later by re-running the wizard." Cost: small UI change, one extra radio option per question.
+
 ## D. Shape support
 
 ### D1 — Cloud Functions scaffolding for Shape C — **P1**
@@ -76,6 +84,20 @@ Mentioned in the original meeting as a longer-term need ("eventually a vector ba
 ### D4 — Custom Firebase region — **P3**
 
 `functions.region` is hardcoded to `europe-west3` in the planner. Fine for the current user; needs to be configurable (asked at interview time or read from env) before this ships beyond Mauricio.
+
+### D5 — Detect incompatible local DB & offer migration — **P1 (detection) / P2 (migration)**
+
+A vibecoded app may use a local persistence layer that Firebase can't run as-is: `fs.writeFileSync` to JSON/CSV, sqlite via `better-sqlite3`, postgres via `pg`, mysql, etc. Cloud Functions have an ephemeral filesystem and no persistent local DB.
+
+**Detection (P1):** the inspector grows new signals — `package.json` deps for `pg`, `mysql`, `mysql2`, `better-sqlite3`, `sqlite3`, `mongodb`, and code-level `fs.writeFileSync` / `fs.appendFileSync` usage in the project (excluding `node_modules`). When detected, the wizard pauses with a clear "your app uses X — Firebase doesn't run X natively" page.
+
+**Options offered (P2):**
+
+1. **Deploy frontend only.** Skip the backend in the plan; user understands the deployed app won't persist anything until they migrate.
+2. **Walk through a Firestore migration.** A guided refactor — the same pattern as the stock-monitor 2026-05-08 migration: create a `storage.js` adapter, branch on `STORAGE_BACKEND=files|firestore`, migrate write sites. Could be Claude-driven via a launched conversation, or scripted for common patterns.
+3. **Cancel.** Exit with no changes; user goes off and decides what they want.
+
+The detection alone is high value because it removes the "I deployed it and now nothing works" surprise. The migration assistance is bigger scope but is where the toolkit becomes meaningfully useful for real apps.
 
 ## E. Wizard UX
 
