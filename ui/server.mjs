@@ -4,6 +4,7 @@ import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import { findFreePort } from "./server/port.mjs";
 import { mountPreflight } from "./server/api/preflight.mjs";
+import { mountBrain } from "./server/api/brain.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const APP_DIR = process.argv[2] || process.cwd();
@@ -12,6 +13,7 @@ async function main() {
   const app = express();
   app.use(express.json());
   mountPreflight(app);
+  mountBrain(app);
   app.use(express.static(join(__dirname, "dist")));
 
   app.get("/api/app-dir", (_req, res) => res.json({ appDir: APP_DIR }));
