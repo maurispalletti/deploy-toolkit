@@ -18,7 +18,8 @@ export default function Preflight({ onBack, onNext }) {
       } catch {}
     }
     poll();
-    const id = setInterval(poll, loginPolling ? 2000 : 0);
+    if (!loginPolling) return () => { cancelled = true; };
+    const id = setInterval(poll, 2000);
     return () => { cancelled = true; clearInterval(id); };
   }, [loginPolling]);
 
