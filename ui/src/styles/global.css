@@ -141,3 +141,17 @@ body {
 }
 .field input[type=text]:focus { outline: none; border-color: var(--orange); }
 .help { font-size: 12px; color: var(--muted); margin-top: 6px; }
+.plan-list { list-style: none; padding: 0; margin: 0; }
+.plan-list li {
+  padding: 10px 0; display: flex; gap: 12px; align-items: flex-start;
+  border-bottom: 1px solid var(--border);
+}
+.plan-list li:last-child { border-bottom: none; }
+.plan-list .num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(255,160,0,.15); color: var(--orange);
+  font-weight: 600; font-size: 12px;
+  display: grid; place-items: center; flex-shrink: 0; margin-top: 1px;
+}
+.plan-list .title { font-size: 14px; }
+.plan-list .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
