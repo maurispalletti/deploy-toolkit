@@ -65,7 +65,55 @@ A non-technical user with a vibecoded app on their laptop doesn't have version c
 
 ### C5 — "I don't know what my app needs" path — **P2**
 
-The inspector already detects framework/backend/secrets from code, so the user doesn't strictly need to know. The remaining gap is the wizard's plain-language questions ("Will users sign in?", "Does the app need a database?"). If the user can't answer, add an "I'm not sure" option per question that picks the safest default (no auth, no DB, Shape A) and shows a follow-up: "You can add this later by re-running the wizard." Cost: small UI change, one extra radio option per question.
+The inspector already detects framework/backend/secrets from code, so the user doesn't strictly need to know. The remaining gap is the wizard's plain-language questions ("Will users sign in?", "Does the app need a database?"). If the user can't answer:
+
+- Add an "I'm not sure" option per question.
+- On click, the inspector does a **deep-read pass** — pure pattern matching, no LLM. New sub-modules under `lib/inspector/`:
+  - `detect-auth-usage.mjs` — looks for `firebase/auth` imports, `getAuth(`, `signInWith*`, `onAuthStateChanged`.
+  - `detect-db-usage.mjs` — looks for `firebase/firestore`, `addDoc`, `getDocs`, plus incompat patterns (see D5).
+  - `detect-secrets-usage.mjs` — looks for `process.env.*` references and hardcoded secret prefixes (see C6).
+  - Each returns `{ likelyUsed: bool, confidence: "high"|"medium"|"low", evidence: ["src/X:line"] }`.
+- Wizard shows the deep-read result with the evidence (clickable file paths). User confirms or overrides.
+- **Default fallback** when user picks "I'm not sure" with no deep-read evidence: no auth, no DB, Shape A. The Done page surfaces a card: "If you need sign-in or a database later, re-run this wizard."
+
+### C6 — Secrets handling (detect → block-and-prompt → ingest) — **P1**
+
+Three concerns separated:
+
+1. **Real secrets vs browser-safe values.** Firebase API keys are public by design; security is enforced via Firestore rules and Auth. Stripe live keys, AWS keys, OpenAI keys, etc. are real secrets. The wizard must distinguish.
+2. **Hardcoded secrets in the source.** A common vibecoded mistake: `const STRIPE_KEY = "sk_live_..."`. These leak into git and into the deployed bundle.
+3. **Real secrets at runtime.** Server-only secrets go to Firebase Functions secrets (Google Cloud Secret Manager). Cloud Functions read them via `process.env.NAME`.
+
+The flow is the same pattern as D5 — **detect → block + generate prompt → user refactors → wizard re-detects → ingest**:
+
+**Sub-step 1 — Detect** (`lib/inspector/detect-secrets-usage.mjs`):
+- Source scan for known prefixes: `sk_live_*` / `sk_test_*` (Stripe), `AKIA*` (AWS), `xoxb-*` (Slack), `ghp_*` / `gho_*` (GitHub PAT), `sk-ant-*` (Anthropic), `sk-...` 40+ chars (OpenAI), `AIza*` (Google — but Firebase API keys legitimately use these, so context-check).
+- Source scan for `process.env.*` references → list of expected env vars.
+- `.env.example` parsing (already exists in inspector).
+- Returns `{ hardcoded: [{file, line, prefix, redacted}], envRefs: [name], envExampleKeys: [name] }`.
+
+**Sub-step 2 — Block + generate prompt** (only if hardcoded secrets found):
+- New wizard page: "We found hardcoded secrets in your code". Lists detected locations with prefix + redacted preview.
+- Generates `REFACTOR-SECRETS.md` in the app folder using a shared template helper (see D5):
+  - Detected hardcoded secrets
+  - Recommended `.env` structure with placeholders
+  - Refactor recipe: replace each inline value with `process.env.X`
+  - `.gitignore` entry for `.env`
+  - Re-run instruction
+- Buttons: `[Open REFACTOR-SECRETS.md]` `[Copy to clipboard]` `[Cancel]`.
+- User pastes into Claude Code or their AI tool, applies the refactor, re-runs `./deploy-app`. Wizard re-detects, finds no hardcoded secrets, proceeds.
+
+**Sub-step 3 — Per-key classification + ingestion** (once secrets are in `.env`):
+- For each env var: "Is `STRIPE_KEY` something users should be able to read in their browser, or only your server?"
+- **Browser-safe** → wizard writes value to `.env.production` so Vite/Next bakes it into the build.
+- **Server-only** + Shape C → wizard runs `firebase functions:secrets:set NAME` with a masked input (never echoed, never persisted by us).
+- **Server-only** + Shape A/B → block: "This app has no backend, so server-only secrets have no safe home. Either treat as browser-safe (accept it's public), upgrade to Shape C, or cancel."
+
+**Placement in wizard:** new step between Questions (page 4) and Plan Summary (page 5). Plan needs to reflect which secrets are server-side so the deploy script can `firebase functions:secrets:set` them in advance.
+
+**Scope:** ~400 lines total. Inspector module ~80, secrets page + per-key UI ~120, block page + prompt generator ~150, backend endpoints ~60.
+
+**Shared template with D5:** the `REFACTOR-*.md` generation uses a common helper (`lib/refactor-prompts/template.mjs`) so the structure stays consistent across DB migration and secrets refactor prompts.
 
 ## D. Shape support
 
@@ -85,19 +133,27 @@ Mentioned in the original meeting as a longer-term need ("eventually a vector ba
 
 `functions.region` is hardcoded to `europe-west3` in the planner. Fine for the current user; needs to be configurable (asked at interview time or read from env) before this ships beyond Mauricio.
 
-### D5 — Detect incompatible local DB & offer migration — **P1 (detection) / P2 (migration)**
+### D5 — Detect incompatible local DB & offer refactor prompt — **P1 (detection + prompt) / P2 (automated migration)**
 
-A vibecoded app may use a local persistence layer that Firebase can't run as-is: `fs.writeFileSync` to JSON/CSV, sqlite via `better-sqlite3`, postgres via `pg`, mysql, etc. Cloud Functions have an ephemeral filesystem and no persistent local DB.
+A vibecoded app may use a local persistence layer that Firebase can't run as-is: `fs.writeFileSync` to JSON/CSV, sqlite via `better-sqlite3`, postgres via `pg`, mysql, mongodb, etc. Cloud Functions have an ephemeral filesystem and no persistent local DB. Without intervention, the deploy "succeeds" but the app is silently broken.
 
-**Detection (P1):** the inspector grows new signals — `package.json` deps for `pg`, `mysql`, `mysql2`, `better-sqlite3`, `sqlite3`, `mongodb`, and code-level `fs.writeFileSync` / `fs.appendFileSync` usage in the project (excluding `node_modules`). When detected, the wizard pauses with a clear "your app uses X — Firebase doesn't run X natively" page.
+**Detection (P1):** the inspector grows `lib/inspector/detect-db-usage.mjs`. Signals:
 
-**Options offered (P2):**
+- `package.json` deps: `pg`, `mysql`, `mysql2`, `better-sqlite3`, `sqlite3`, `mongodb`, `mongoose`, `prisma`.
+- Code-level usage of those deps (`new Database(`, `new Pool(`, `MongoClient.connect`, etc.) — excluding `node_modules`.
+- `fs.writeFileSync` / `fs.appendFileSync` to non-`/tmp` paths.
+
+Returns `{ likelyUsed: bool, drivers: ["sqlite", "fs-writes"], evidence: ["src/db.js:14"] }`.
+
+**Options offered on the block page (P1 — same pattern as C6):**
 
 1. **Deploy frontend only.** Skip the backend in the plan; user understands the deployed app won't persist anything until they migrate.
-2. **Walk through a Firestore migration.** A guided refactor — the same pattern as the stock-monitor 2026-05-08 migration: create a `storage.js` adapter, branch on `STORAGE_BACKEND=files|firestore`, migrate write sites. Could be Claude-driven via a launched conversation, or scripted for common patterns.
-3. **Cancel.** Exit with no changes; user goes off and decides what they want.
+2. **🪄 Generate a refactor prompt.** Wizard writes `REFACTOR-FOR-FIREBASE.md` to the app folder, populated with detected facts. Uses the shared template helper (`lib/refactor-prompts/template.mjs`) that C6 also uses. Sections: what was detected, why it won't work on Firebase, recipe for migrating to Firestore (mirroring the storage-adapter pattern from the stock-monitor 2026-05-08 migration), re-run instructions. User pastes into Claude Code or their AI tool, applies the refactor, re-runs the wizard.
+3. **Cancel.** Exit with no changes.
 
-The detection alone is high value because it removes the "I deployed it and now nothing works" surprise. The migration assistance is bigger scope but is where the toolkit becomes meaningfully useful for real apps.
+**Automated migration (P2):** the toolkit itself drives the Firestore migration without external AI help. Bigger scope — would mean templating the storage-adapter pattern, mapping detected schemas to Firestore document shapes, rewriting call sites. Defer.
+
+**Shared template with C6:** `REFACTOR-FOR-FIREBASE.md` (D5) and `REFACTOR-SECRETS.md` (C6) both use the same generator structure (detected facts → why this matters → recipe → re-run note). One helper, two callers.
 
 ## E. Wizard UX
 
