@@ -1,0 +1,64 @@
+import { useEffect, useState } from "react";
+import Card from "../components/Card.jsx";
+import Button from "../components/Button.jsx";
+import StageCard from "../components/StageCard.jsx";
+import { runStage } from "../api.js";
+
+const STAGES = [
+  { id: "provision", name: "Provisioning Firebase project" },
+  { id: "build", name: "Building your app" },
+  { id: "deploy", name: "Deploying to Firebase Hosting" },
+];
+
+export default function Progress({ appDir, onDone, onError }) {
+  const [stageState, setStageState] = useState(() =>
+    STAGES.reduce((acc, s) => ({ ...acc, [s.id]: { status: "idle", lines: [] } }), {})
+  );
+  const [allDone, setAllDone] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      for (const stage of STAGES) {
+        if (cancelled) return;
+        setStageState(s => ({ ...s, [stage.id]: { ...s[stage.id], status: "running" } }));
+        const result = await runStage(stage.id, appDir, {
+          onLog: (line) => setStageState(s => ({
+            ...s,
+            [stage.id]: { ...s[stage.id], lines: [...s[stage.id].lines, line] }
+          })),
+        });
+        if (result.exitCode !== 0) {
+          setStageState(s => ({ ...s, [stage.id]: { ...s[stage.id], status: "error" } }));
+          onError?.({ stage: stage.id, exitCode: result.exitCode });
+          return;
+        }
+        setStageState(s => ({ ...s, [stage.id]: { ...s[stage.id], status: "done" } }));
+      }
+      if (!cancelled) {
+        setAllDone(true);
+        onDone?.();
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [appDir]);
+
+  return (
+    <Card title="Deploying…" sub="Live output from each stage. Click a stage to expand.">
+      {STAGES.map((s, i) => (
+        <StageCard
+          key={s.id}
+          name={s.name}
+          status={stageState[s.id].status}
+          lines={stageState[s.id].lines}
+          open={stageState[s.id].status === "running" || stageState[s.id].status === "error"}
+        />
+      ))}
+      {allDone && (
+        <div className="btn-row">
+          <Button onClick={onDone}>See your live app →</Button>
+        </div>
+      )}
+    </Card>
+  );
+}
