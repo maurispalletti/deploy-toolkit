@@ -10,15 +10,13 @@ From inside this folder:
 ./deploy-app /path/to/your/app
 ```
 
-The orchestrator switches to Node 22 via nvm if needed, checks for the Firebase CLI (offers to install it on consent), runs `firebase login` if you aren't authenticated, and then asks a handful of plain-language questions. After that it provisions a Firebase project, builds your app, deploys it, and prints the live URL.
+A browser tab opens with a wizard that walks you through everything — checking your tools, asking a few plain-language questions, and deploying. No terminal needed past the first command.
 
-### Smoke test
+Power users can fall back to the terminal-only flow:
 
 ```bash
-./deploy-app samples/static-html
+./deploy-app /path/to/your/app --cli
 ```
-
-Answer the prompts with `n` for the simplest "static page only" path. You'll get a live URL on `*.web.app`.
 
 ## Status
 
