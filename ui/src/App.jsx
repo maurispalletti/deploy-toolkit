@@ -20,6 +20,15 @@ export default function App() {
 
   useEffect(() => { getAppDir().then(setAppDir); }, []);
 
+  useEffect(() => {
+    if (!appDir) return;
+    import("./api.js").then(({ getExistingConfig }) => {
+      getExistingConfig(appDir).then(({ existing, plan }) => {
+        if (existing) { setPlan(plan); setStep(7); }
+      });
+    });
+  }, [appDir]);
+
   const next = () => setStep(s => Math.min(7, s + 1));
   const back = () => setStep(s => Math.max(1, s - 1));
 

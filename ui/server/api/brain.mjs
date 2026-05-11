@@ -1,4 +1,4 @@
-import { writeFile, unlink } from "node:fs/promises";
+import { writeFile, unlink, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { inspect } from "../../../lib/inspector/index.mjs";
 import { plan } from "../../../lib/planner/index.mjs";
@@ -27,5 +27,16 @@ export function mountBrain(app) {
   app.post("/api/plan", async (req, res) => {
     try { res.json(await planApp(req.body.appDir, req.body.answers)); }
     catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.get("/api/existing-config", async (req, res) => {
+    const appDir = req.query.appDir;
+    if (!appDir) return res.status(400).json({ error: "appDir required" });
+    try {
+      const raw = await readFile(`${appDir}/deploy-app.config.json`, "utf8");
+      res.json({ existing: true, plan: JSON.parse(raw) });
+    } catch {
+      res.json({ existing: false });
+    }
   });
 }

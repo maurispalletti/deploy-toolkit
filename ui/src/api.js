@@ -38,6 +38,11 @@ export async function postQuit() {
   try { await fetch("/api/quit", { method: "POST" }); } catch {}
 }
 
+export async function getExistingConfig(appDir) {
+  const r = await fetch(`/api/existing-config?appDir=${encodeURIComponent(appDir)}`);
+  return r.json();
+}
+
 // Runs a stage, calls onLog(line) per log line, returns { exitCode, error? }
 export function runStage(stage, appDir, { onLog, onError }) {
   return new Promise((resolve) => {
