@@ -31,7 +31,17 @@ if [ "$PROJECT_EXISTS" = "yes" ]; then
   echo "▸ Project $PROJECT_ID already exists; reusing"
 else
   echo "▸ Creating Firebase project: $PROJECT_ID"
-  firebase projects:create "$PROJECT_ID" --display-name "$PROJECT_ID"
+  set +e
+  CREATE_OUTPUT=$(firebase projects:create "$PROJECT_ID" --display-name "$PROJECT_ID" 2>&1)
+  CREATE_EXIT=$?
+  set -e
+  echo "$CREATE_OUTPUT"
+  if [ $CREATE_EXIT -ne 0 ]; then
+    if echo "$CREATE_OUTPUT" | grep -q "PERMISSION_DENIED\|caller does not have permission"; then
+      echo "DEPLOY_TOOLKIT_SENTINEL:NEEDS_BOOTSTRAP"
+    fi
+    exit $CREATE_EXIT
+  fi
 fi
 
 # Set as the active project

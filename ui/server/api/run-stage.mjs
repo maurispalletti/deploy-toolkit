@@ -31,6 +31,10 @@ export function runStage(stageName, appDir, stream) {
       while ((i = buf.indexOf("\n")) >= 0) {
         const line = buf.slice(0, i);
         buf = buf.slice(i + 1);
+        if (line.includes("DEPLOY_TOOLKIT_SENTINEL:NEEDS_BOOTSTRAP")) {
+          sseEvent(stream, "error", { code: "NEEDS_BOOTSTRAP", message: "Firebase TOS bootstrap required" });
+          continue;
+        }
         sseEvent(stream, "log", { line });
       }
     }

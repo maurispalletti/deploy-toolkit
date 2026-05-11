@@ -7,6 +7,7 @@ import Questions from "./pages/Questions.jsx";
 import PlanSummary from "./pages/PlanSummary.jsx";
 import Progress from "./pages/Progress.jsx";
 import Done from "./pages/Done.jsx";
+import Bootstrap from "./pages/Bootstrap.jsx";
 import { getAppDir } from "./api.js";
 
 const PAGES = ["welcome", "preflight", "inspector", "questions", "plan", "progress", "done"];
@@ -42,8 +43,13 @@ export default function App() {
       {step === 3 && <Inspector appDir={appDir} onBack={back} onConfirm={(i) => { setInspection(i); next(); }} />}
       {step === 4 && <Questions inspection={inspection} defaults={answers} onBack={back} onNext={(a) => { setAnswers(a); next(); }} />}
       {step === 5 && <PlanSummary appDir={appDir} answers={answers} onBack={back} onDeploy={(p) => { setPlan(p); next(); }} />}
-      {step === 6 && <Progress appDir={appDir} onDone={next} onError={(err) => alert(`Stage ${err.stage} failed (exit ${err.exitCode}). Check the live log for details.`)} />}
+      {step === 6 && <Progress appDir={appDir} onDone={next}
+        onError={(err) => {
+          if (err.code === "NEEDS_BOOTSTRAP") setStep(8);
+          else alert(`Stage ${err.stage} failed (exit ${err.exitCode}).`);
+        }} />}
       {step === 7 && <Done plan={plan} onRedeploy={() => setStep(6)} onAnother={() => { setStep(1); setInspection(null); setAnswers(null); setPlan(null); }} />}
+      {step === 8 && <Bootstrap onRetry={() => setStep(6)} />}
     </div>
   );
 }

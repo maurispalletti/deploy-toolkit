@@ -27,6 +27,10 @@ export default function Progress({ appDir, onDone, onError }) {
             ...s,
             [stage.id]: { ...s[stage.id], lines: [...s[stage.id].lines, line] }
           })),
+          onError: (data) => {
+            setStageState(s => ({ ...s, [stage.id]: { ...s[stage.id], status: "error" } }));
+            onError?.({ stage: stage.id, ...data });
+          },
         });
         if (result.exitCode !== 0) {
           setStageState(s => ({ ...s, [stage.id]: { ...s[stage.id], status: "error" } }));
