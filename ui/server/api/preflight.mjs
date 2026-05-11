@@ -18,10 +18,13 @@ async function firebaseStatus() {
 }
 
 async function loginStatus() {
+  // Strategy: just grep for the first email-shaped token in `firebase login:list`
+  // stdout. This is robust across older "User: <email>" format and newer
+  // table-rendered output. If no email is present we treat it as logged out.
   try {
     const { stdout } = await exec("firebase", ["login:list"]);
-    const match = stdout.match(/User:\s+(\S+)/);
-    if (match) return { ok: true, email: match[1] };
+    const match = stdout.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    if (match) return { ok: true, email: match[0] };
     return { ok: false, email: null };
   } catch {
     return { ok: false, email: null };

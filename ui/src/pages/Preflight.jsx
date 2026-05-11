@@ -25,6 +25,15 @@ export default function Preflight({ onBack, onNext }) {
 
   const allOk = state && state.node.ok && state.firebaseCli.ok && state.login.ok;
 
+  // Auto-advance once everything is green AND we were waiting for login.
+  // Gives a brief moment to see the green checkmarks before moving on.
+  useEffect(() => {
+    if (loginPolling && allOk) {
+      const id = setTimeout(() => onNext?.(), 800);
+      return () => clearTimeout(id);
+    }
+  }, [loginPolling, allOk, onNext]);
+
   return (
     <Card title="Checking your tools"
           sub="Quick prerequisites check before we touch Firebase.">
