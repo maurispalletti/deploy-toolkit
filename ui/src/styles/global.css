@@ -155,3 +155,22 @@ body {
 }
 .plan-list .title { font-size: 14px; }
 .plan-list .meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.done-card {
+  padding: 32px; border: 1px solid var(--border); border-radius: var(--radius-card);
+  background: linear-gradient(135deg, rgba(255,160,0,.06), rgba(255,202,40,.04));
+  text-align: center;
+}
+.done-emoji { font-size: 48px; margin-bottom: 8px; }
+.done-card h2 { margin: 0 0 8px; font-size: 22px; }
+.done-url {
+  display: inline-block; margin: 16px 0 8px;
+  font-family: var(--font-mono); font-size: 16px; color: var(--blue);
+  padding: 10px 18px; border-radius: 10px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  text-decoration: none;
+}
+.done-url:hover { background: #1f1f1f; }
+.done-actions {
+  display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+  margin-top: 24px;
+}
