@@ -8,6 +8,7 @@ import PlanSummary from "./pages/PlanSummary.jsx";
 import Progress from "./pages/Progress.jsx";
 import Done from "./pages/Done.jsx";
 import Bootstrap from "./pages/Bootstrap.jsx";
+import IncompatibleApp from "./pages/IncompatibleApp.jsx";
 import { getAppDir } from "./api.js";
 
 export default function App() {
@@ -52,7 +53,15 @@ export default function App() {
         />
       )}
       {step === 2 && <Preflight onBack={back} onNext={next} />}
-      {step === 3 && <Inspector appDir={appDir} onBack={back} onConfirm={(i) => { setInspection(i); next(); }} />}
+      {step === 3 && <Inspector appDir={appDir} onBack={back} onConfirm={(i) => {
+        setInspection(i);
+        // If the inspector flagged the app as DB-incompatible, jump to the
+        // block page instead of forwarding to Questions. The user picks one
+        // of three options (refactor prompt / frontend-only / cancel) and
+        // we re-route from there.
+        if (i.dbIncompat) setStep(9);
+        else next();
+      }} />}
       {step === 4 && <Questions inspection={inspection} defaults={answers} onBack={back} onNext={(a) => { setAnswers(a); next(); }} />}
       {step === 5 && <PlanSummary appDir={appDir} answers={answers} onBack={back} onDeploy={(p) => { setPlan(p); next(); }} />}
       {step === 6 && <Progress appDir={appDir} onDone={next}
@@ -62,6 +71,57 @@ export default function App() {
         }} />}
       {step === 7 && <Done plan={plan} onRedeploy={() => setStep(6)} onAnother={() => { setStep(1); setInspection(null); setAnswers(null); setPlan(null); }} />}
       {step === 8 && <Bootstrap onRetry={() => setStep(6)} />}
+      {step === 9 && (
+        <IncompatibleApp
+          appDir={appDir}
+          inspection={inspection}
+          // After re-inspection: if the user resolved the incompat, forward
+          // them to Questions with the fresh inspection. If they didn't,
+          // stay on the block page with the fresh evidence.
+          onRefactor={(fresh) => {
+            setInspection(fresh);
+            if (fresh.dbIncompat) {
+              // Still incompatible — stay on this page. The page itself
+              // resets back to the "decide" stage on the next render
+              // because the inspection prop changed.
+              setStep(9);
+            } else {
+              setStep(4);
+            }
+          }}
+          onDeployFrontendOnly={() => {
+            // Force shape A — drop the backend from the plan. The
+            // Questions page recomputes shape on submit, so we still
+            // need a way to communicate "user accepted the bypass".
+            // We do it via answers: pre-seed with the bypass flag so
+            // Questions can render the heads-up and the planner can
+            // see the intent if it ever wants to gate on it.
+            setAnswers({
+              ...(answers ?? {}),
+              dbIncompatBypass: "frontend-only",
+              needsAuth: false,
+              needsDb: false
+            });
+            // Pretend the inspector said no backend so Questions and
+            // the planner generate a Shape A/B plan. Also clear the
+            // dbIncompat flag so going Back from Questions doesn't
+            // immediately re-trigger the block on the next confirm.
+            setInspection({
+              ...inspection,
+              hasBackend: false,
+              suggestedShape: inspection.framework === "none" ? "A" : "A_or_B",
+              dbIncompat: false
+            });
+            setStep(4);
+          }}
+          onCancel={() => {
+            setStep(1);
+            setInspection(null);
+            setAnswers(null);
+            setPlan(null);
+          }}
+        />
+      )}
     </div>
   );
 }
