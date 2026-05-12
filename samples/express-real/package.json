@@ -1,0 +1,8 @@
+{
+  "name": "sample-express-real",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "echo 'no root build'"
+  }
+}

@@ -9,4 +9,5 @@ samples/**/firebase.json
 samples/**/.firebaserc
 samples/**/.firebase/
 samples/**/firestore.rules
+samples/**/package-lock.json
 ui/dist/

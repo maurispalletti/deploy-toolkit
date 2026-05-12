@@ -1,0 +1,12 @@
+{
+  "name": "express-real-functions",
+  "private": true,
+  "main": "index.js",
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "firebase-functions": "^5.0.0",
+    "express": "^4.19.2"
+  }
+}

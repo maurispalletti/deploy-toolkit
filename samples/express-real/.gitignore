@@ -1,0 +1,7 @@
+node_modules/
+functions/node_modules/
+dist/
+.firebaserc
+firebase.json
+deploy-app.config.json
+.firebase/

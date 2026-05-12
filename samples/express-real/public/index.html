@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sample Express + Hosting App</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: #0f0f0f;
+      color: #ededed;
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    }
+    .card {
+      max-width: 520px;
+      margin: 14vh auto;
+      padding: 32px;
+      text-align: center;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.4);
+    }
+    h1 { margin: 0 0 24px; font-size: 22px; font-weight: 600; }
+    button {
+      padding: 12px 28px;
+      font: inherit;
+      font-weight: 500;
+      color: #1a1300;
+      background: #ffa000;
+      border: none;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    button:hover { background: #ffca28; }
+    pre {
+      margin: 24px 0 0;
+      padding: 16px;
+      background: #0f0f0f;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+      color: #8a8a8a;
+      font-size: 13px;
+      text-align: left;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 56px;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Sample Express + Hosting App</h1>
+    <button id="go">Get a greeting</button>
+    <pre id="out">Click the button to call /api/hello</pre>
+  </main>
+  <script>
+    const out = document.getElementById("out");
+    document.getElementById("go").addEventListener("click", async () => {
+      out.textContent = "Loading...";
+      try {
+        const res = await fetch("/api/hello");
+        const json = await res.json();
+        out.textContent = JSON.stringify(json, null, 2);
+      } catch (err) {
+        out.textContent = "Error: " + (err && err.message ? err.message : String(err));
+      }
+    });
+  </script>
+</body>
+</html>
