@@ -48,6 +48,18 @@ export async function getExistingConfig(appDir) {
   return r.json();
 }
 
+// Writes REFACTOR-FOR-FIREBASE.md into the app folder using the detection
+// output from the most recent inspect() call. Returns { path } on success.
+export async function generateDbRefactorPrompt(appDir, inspection) {
+  const r = await fetch("/api/refactor-prompt/db", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ appDir, inspection }),
+  });
+  if (!r.ok) throw new Error(`refactor-prompt ${r.status}`);
+  return r.json();
+}
+
 // Runs a stage, calls onLog(line) per log line, returns { exitCode, error? }
 export function runStage(stage, appDir, { onLog, onError }) {
   return new Promise((resolve) => {
