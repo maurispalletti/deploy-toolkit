@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.env
+deploy-app.config.json
+firebase.json
+.firebaserc
+.firebase/
+firestore.rules
