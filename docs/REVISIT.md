@@ -117,9 +117,18 @@ The flow is the same pattern as D5 — **detect → block + generate prompt → 
 
 ## D. Shape support
 
-### D1 — Cloud Functions scaffolding for Shape C — **P1**
+### D1 — Cloud Functions scaffolding for Shape C — **P2 (was P1)**
 
-When the planner picks Shape C it writes `hosting.rewrites` pointing at `function: "api"` and `functions.dir: "functions"`. But **no stage actually creates a `functions/` directory or an `api` export**. If a user picks Shape C without bringing their own functions scaffold, the deploy will fail. Options: scaffold a minimal `functions/index.js` with a hello-world export, or block the wizard with a clear warning, or detect existing functions and only offer Shape C when one is present.
+~~When the planner picks Shape C it writes `hosting.rewrites` pointing at `function: "api"` and `functions.dir: "functions"`. But no stage actually creates a `functions/` directory or an `api` export. If a user picks Shape C without bringing their own functions scaffold, the deploy will fail.~~
+
+**Landed (2026-05-12):** the toolkit now supports the "user brings their own `functions/`" path end-to-end:
+
+- The inspector detects `functions/package.json` declaring `firebase-functions` and marks the app Shape C with `outputDir: "public"` when a `public/` folder is present. (See `lib/inspector/index.mjs`.)
+- The build stage runs `npm install --prefix functions` whenever a `functions/package.json` is on disk, so `firebase deploy --only functions` has its node_modules ready. (See `stages/build.sh`.)
+- The planner already wires `hosting.rewrites: [{ source: "/api/**", function: "api" }]` and `functions.dir: "functions"` for Shape C; a new test locks in `hosting.publicDir === "public"` when the inspector reports the Firebase-conventional layout.
+- A real end-to-end sample lives at `samples/express-real/` (HTML frontend in `public/`, Express app in `functions/` exposing `/hello` and `/time` via `onRequest`).
+
+**Still open (P2):** auto-scaffolding `functions/` for arbitrary Shape C apps that don't bring their own (e.g. `samples/express-backend`-style apps where Express lives at the project root). Today the planner still picks Shape C for those, but no stage rewrites the Express entry into a `firebase-functions` export or generates a `functions/package.json`. Options: (a) scaffold a minimal `functions/index.js` that wraps `server.js`, (b) refuse Shape C with a clear "please move your code into functions/" message and a generated REFACTOR-* prompt (same pattern as C6/D5), or (c) keep Shape C gated to apps that already ship a `functions/` layout. Worth deciding before opening Shape C to non-technical users.
 
 ### D2 — Postgres via Firebase Data Connect — **research**
 

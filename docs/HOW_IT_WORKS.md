@@ -58,6 +58,8 @@ It then suggests a "shape":
 - `A` if there's no `package.json`
 - `A_or_B` otherwise (a JS frontend that might or might not need Firebase services)
 
+There's one extra override after the five modules run: if the app ships a `functions/package.json` that declares `firebase-functions` as a dep, the inspector treats it as a first-class Shape C project (sets `hasBackend = true`, `suggestedShape = "C"`) and — when a `public/` folder is present at the app root — pins `outputDir = "public"` so the planner emits `hosting.publicDir: "public"` instead of the framework-conventional `dist`. This handles the Firebase-canonical layout (frontend in `public/`, backend in `functions/`) without forcing the user to fight the inspector.
+
 The result looks like:
 
 ```js
@@ -157,8 +159,10 @@ What it does, in order:
 
 Reads `build.command` from the config:
 
-- If empty (shape A with no `package.json`), prints `No build command configured (static app); skipping` and exits cleanly.
+- If empty (shape A with no `package.json`), prints `No build command configured (static app); skipping root build` and proceeds to the functions step.
 - Otherwise, runs `npm install` if `node_modules/` is missing, then `eval`s the build command (currently always `npm run build`).
+
+After the root build, if a `functions/package.json` exists at the app root (Shape C with the Firebase-conventional `functions/` layout), the stage runs `npm install --prefix functions` to pre-install the Cloud Functions deps. This is skipped when `functions/node_modules/` already exists. Without this step `firebase deploy --only functions` would fail with a missing-dependency error on the first deploy.
 
 ## Stage 5 — Deploy (`stages/deploy.sh`)
 
