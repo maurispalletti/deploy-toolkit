@@ -45,6 +45,10 @@ When `addFirebase` fails the GCP project is left dangling. A retry currently cre
 
 Firebase CLI opens its own OAuth tab. In the UI, we'll poll for completion (spec §6.3 `/api/login`). Verify the polling interval and timeout feel right under real network conditions, not just on a fast laptop.
 
+### B4 — Mid-deploy Blaze upgrade prompt — **P1**
+
+Plan Summary now warns upfront that Shape C needs Blaze, but it can only link to the general pricing page (per-project upgrade URL doesn't exist until provisioning runs). When the deploy stage fails with `Your project ... must be on the Blaze plan`, the wizard should detect that, surface a dedicated retry page with the now-resolvable upgrade URL (`https://console.firebase.google.com/project/<projectId>/usage/details`), and offer "I've upgraded — retry". Mirrors the bootstrap recovery pattern we built for the first-run 403. Without this, the user is stuck on a generic stage-failed error.
+
 ## C. App scaffolding & inputs
 
 ### C1 — GitHub starter clone — **P2**
