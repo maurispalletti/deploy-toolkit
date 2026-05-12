@@ -45,7 +45,7 @@ deploy-toolkit/
 ## Tests
 
 ```bash
-npm test          # 33 Node tests covering the brain (inspector / interview / planner)
+npm test          # Node tests covering the brain (inspector / interview / planner) + refactor-prompts
 ```
 
 ## Further reading

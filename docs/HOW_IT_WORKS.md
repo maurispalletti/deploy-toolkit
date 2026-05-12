@@ -44,13 +44,14 @@ The brain decides everything about your app and writes the result to `deploy-app
 
 ### 2a — Inspector (`lib/inspector/`)
 
-Pure file-system inspection — no questions, no network. Runs five small modules and combines their output:
+Pure file-system inspection — no questions, no network. Runs six small modules and combines their output:
 
 - **`read-package.mjs`** — reads `package.json` if present.
 - **`detect-framework.mjs`** — looks at deps to label the framework: `nextjs`, `vite-react`, `cra`, `express`, `unknown`, or `none` (no `package.json`).
 - **`find-output-dir.mjs`** — based on framework, checks for the conventional build output folder. For `vite-react` it looks for `dist`; for `cra`, `build`; for `nextjs`, `out` then `.next`. For `none`, the output is `.` (the folder itself is what gets served).
 - **`has-backend.mjs`** — returns `true` if the framework is `express`, or if the folder contains `functions/`, `api/`, `server/`, or `server.js`.
 - **`read-env-example.mjs`** — parses `.env.example` and returns the list of variable names (the keys, not values).
+- **`detect-db-usage.mjs`** — source-level scan for databases / persistence layers Firebase Cloud Functions can't run as-is: sqlite, postgres, mysql, mongodb, prisma, and `fs.writeFileSync`/`appendFileSync` to non-`/tmp` paths. Returns `{ incompatible, drivers, evidence }`. The inspection exposes the result as `dbIncompat` + `dbIncompatDetails`; see "Incompatible local database" under [Common failure modes](#common-failure-modes-and-fixes) for what the wizard does with it.
 
 It then suggests a "shape":
 
@@ -70,7 +71,9 @@ The result looks like:
   hasBackend: false,
   envKeys: ["VITE_API_KEY"],
   suggestedShape: "A_or_B",
-  pkgName: "my-app"
+  pkgName: "my-app",
+  dbIncompat: false,
+  dbIncompatDetails: { drivers: [], evidence: [] }
 }
 ```
 
@@ -206,6 +209,11 @@ The shape is chosen by the brain in stage 2: backend detection forces C; then th
 - **Project ID conflicts.** Project IDs are globally unique across all of Google Cloud. The planner appends a random 4-character suffix, so collisions are rare; if one happens, delete `deploy-app.config.json` and re-run to generate a new ID.
 - **Stale `deploy-app.config.json`.** Because the brain skips the interview when this file exists, edits to your app's structure won't be re-detected. Delete the file to start fresh.
 - **Node version too old.** The orchestrator tries `nvm use 22` automatically; if you don't have nvm, install it (or upgrade Node to 22+) and re-run.
+- **Incompatible local database.** Inside stage 2 the inspector runs `lib/inspector/detect-db-usage.mjs`, which scans `package.json` deps and source files for sqlite/postgres/mysql/mongodb/prisma usage plus `fs.writeFileSync`/`appendFileSync` to non-`/tmp` paths. If anything turns up, the inspection grows `dbIncompat: true` and the wizard interrupts at a new **Incompatible app** page (step 9) with three options:
+  - **🪄 Generate refactor prompt** writes `REFACTOR-FOR-FIREBASE.md` into the app folder via `POST /api/refactor-prompt/db` (`ui/server/api/refactor.mjs`). The markdown is produced by `lib/refactor-prompts/template.mjs` and includes the detected drivers, the exact call sites (file:line excerpts), a Firestore-via-storage-adapter recipe, and a per-call-site refactor checklist. The user pastes the prompt into Claude Code or another AI tool, applies the migration, and clicks **I've refactored — retry** which re-runs `postInspect()`; if it's clean the wizard forwards to Questions, otherwise it re-renders with the new evidence.
+  - **Deploy frontend only** drops the backend from the plan (the session inspection is mutated to clear `hasBackend`, `dbIncompat`, and `suggestedShape`) so the deploy is Shape A/B. The deployed app's UI will work but anything that hit `/api/*` will fail until the migration lands.
+  - **Cancel** resets state and returns to Welcome.
+  Negative-test fixture for the detector lives at `samples/express-sqlite/` (better-sqlite3 in `functions/`). The positive control — same shape, no incompat — is `samples/express-real/`.
 
 ## Further reading
 

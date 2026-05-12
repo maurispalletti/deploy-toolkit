@@ -146,27 +146,23 @@ Mentioned in the original meeting as a longer-term need ("eventually a vector ba
 
 `functions.region` is hardcoded to `europe-west3` in the planner. Fine for the current user; needs to be configurable (asked at interview time or read from env) before this ships beyond Mauricio.
 
-### D5 — Detect incompatible local DB & offer refactor prompt — **P1 (detection + prompt) / P2 (automated migration)**
+### D5 — Detect incompatible local DB & offer refactor prompt — **~~P1 detection + prompt~~ / P2 (automated migration)**
 
 A vibecoded app may use a local persistence layer that Firebase can't run as-is: `fs.writeFileSync` to JSON/CSV, sqlite via `better-sqlite3`, postgres via `pg`, mysql, mongodb, etc. Cloud Functions have an ephemeral filesystem and no persistent local DB. Without intervention, the deploy "succeeds" but the app is silently broken.
 
-**Detection (P1):** the inspector grows `lib/inspector/detect-db-usage.mjs`. Signals:
+**Detection + prompt — landed 2026-05-12:**
 
-- `package.json` deps: `pg`, `mysql`, `mysql2`, `better-sqlite3`, `sqlite3`, `mongodb`, `mongoose`, `prisma`.
-- Code-level usage of those deps (`new Database(`, `new Pool(`, `MongoClient.connect`, etc.) — excluding `node_modules`.
-- `fs.writeFileSync` / `fs.appendFileSync` to non-`/tmp` paths.
+- `lib/inspector/detect-db-usage.mjs` does the source scan (pure JS, no LLM, no network). Scans for `pg`/`mysql`/`mysql2`/`better-sqlite3`/`sqlite3`/`mongodb`/`mongoose`/`prisma`/`@prisma/client` in `package.json` deps (root + `functions/`), plus regex over `.js/.mjs/.cjs/.ts/.tsx/.jsx` for `new Database(`, `new Pool(`, `mongoose.connect(`, `MongoClient.connect(`, and `fs.writeFileSync`/`fs.appendFileSync` to non-`/tmp` paths. Scan is bounded to 200 files and 50 KB/file and skips `node_modules`/`dist`/`build`/`out`/`coverage`/`.next`/hidden dirs.
+- Returns `{ incompatible, drivers, evidence: [{ file, line, kind, excerpt }] }`.
+- `inspect()` surfaces the result as two new fields: `dbIncompat` and `dbIncompatDetails`.
+- `lib/refactor-prompts/template.mjs` is the shared markdown generator. `generateDbRefactorPrompt({ appName, framework, drivers, evidence })` returns a `REFACTOR-FOR-FIREBASE.md` with the storage-adapter recipe (mirroring the stock-monitor 2026-05-08 migration, referenced inline) and a per-call-site numbered step list.
+- `POST /api/refactor-prompt/db` (`ui/server/api/refactor.mjs`) writes the markdown into the app folder.
+- New wizard step `IncompatibleApp` (step 9) blocks between Inspector confirm and Questions. Three options: generate the refactor prompt, deploy frontend-only (mutates session inspection to drop the backend), or cancel.
+- Negative-test fixture: [`samples/express-sqlite/`](../samples/express-sqlite/). Reference for the positive control: [`samples/express-real/`](../samples/express-real/).
 
-Returns `{ likelyUsed: bool, drivers: ["sqlite", "fs-writes"], evidence: ["src/db.js:14"] }`.
+**Still open (P2 — automated migration):** the toolkit itself drives the Firestore migration without external AI help. Bigger scope — would mean templating the storage-adapter pattern, mapping detected schemas to Firestore document shapes, rewriting call sites. Defer.
 
-**Options offered on the block page (P1 — same pattern as C6):**
-
-1. **Deploy frontend only.** Skip the backend in the plan; user understands the deployed app won't persist anything until they migrate.
-2. **🪄 Generate a refactor prompt.** Wizard writes `REFACTOR-FOR-FIREBASE.md` to the app folder, populated with detected facts. Uses the shared template helper (`lib/refactor-prompts/template.mjs`) that C6 also uses. Sections: what was detected, why it won't work on Firebase, recipe for migrating to Firestore (mirroring the storage-adapter pattern from the stock-monitor 2026-05-08 migration), re-run instructions. User pastes into Claude Code or their AI tool, applies the refactor, re-runs the wizard.
-3. **Cancel.** Exit with no changes.
-
-**Automated migration (P2):** the toolkit itself drives the Firestore migration without external AI help. Bigger scope — would mean templating the storage-adapter pattern, mapping detected schemas to Firestore document shapes, rewriting call sites. Defer.
-
-**Shared template with C6:** `REFACTOR-FOR-FIREBASE.md` (D5) and `REFACTOR-SECRETS.md` (C6) both use the same generator structure (detected facts → why this matters → recipe → re-run note). One helper, two callers.
+**Shared template with C6:** `REFACTOR-FOR-FIREBASE.md` (D5) and `REFACTOR-SECRETS.md` (C6, still pending) both use the same generator structure (detected facts → why this matters → recipe → re-run note). One helper (`generateRefactorPrompt`), two callers.
 
 ## E. Wizard UX
 

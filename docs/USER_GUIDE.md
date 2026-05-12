@@ -149,13 +149,11 @@ Shape C needs Cloud Functions which need the Blaze plan. The Plan Summary page s
 
 ### Incompatible local database
 
-*(Detection landed in REVISIT D5 — verify against this guide if it's slightly off.)*
+If your app uses sqlite, pg, mysql, mongodb, prisma, or writes to local files (`fs.writeFileSync`/`appendFileSync` to non-`/tmp` paths), Firebase can't run it as-is. Cloud Functions have an ephemeral filesystem; there's no persistent local DB.
 
-If your app uses sqlite, pg, mysql, mongodb, or writes to local files (`fs.writeFileSync` to non-`/tmp` paths), Firebase can't run it as-is. Cloud Functions have an ephemeral filesystem; there's no persistent local DB.
+The inspector flags this automatically — see [`samples/express-sqlite/`](../samples/express-sqlite/) for a worked example (Express + `better-sqlite3` in `functions/`). When detected, the wizard pauses on an **Incompatible app** page with three options:
 
-The wizard pauses on an **Incompatible app** page with three options:
-
-1. **🪄 Generate refactor prompt** — writes `REFACTOR-FOR-FIREBASE.md` into your app folder containing detected facts, a Firestore migration recipe (mirroring the storage-adapter pattern), and re-run instructions. You paste it into Claude Code (or any AI coding tool), the AI refactors your app, then you re-run `./deploy-app`.
+1. **🪄 Generate refactor prompt** — writes `REFACTOR-FOR-FIREBASE.md` into your app folder. The markdown lists every detected call site (file:line + 1-line excerpt), explains why Cloud Functions can't run the driver, and walks through a Firestore migration using the storage-adapter pattern (mirroring the stock-monitor 2026-05-08 migration referenced in REVISIT D5). The page also shows a "Copy path" helper and an **I've refactored — retry** button that re-runs the inspector. Workflow: paste the file into Claude Code (or any AI tool), apply the refactor, click retry — the wizard either continues or re-blocks with fresh evidence.
 2. **Deploy frontend only** — skip the backend in the plan. The deployed app's UI will work but anything that calls `/api/*` will fail.
 3. **Cancel** — exit cleanly. Make a decision and come back.
 
