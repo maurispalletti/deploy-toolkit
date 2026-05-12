@@ -174,3 +174,17 @@ body {
   display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
   margin-top: 24px;
 }
+
+.warning-banner {
+  display: flex;
+  gap: 14px;
+  padding: 16px 18px;
+  margin-bottom: 20px;
+  background: rgba(255, 202, 40, 0.08);
+  border: 1px solid rgba(255, 202, 40, 0.25);
+  border-radius: 10px;
+}
+.warning-icon { font-size: 22px; line-height: 1.1; flex-shrink: 0; }
+.warning-body { flex: 1; }
+.warning-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; color: var(--yellow); }
+.warning-text { font-size: 13px; color: var(--text); line-height: 1.55; margin-bottom: 10px; }
