@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sample Notes App (sqlite)</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100%;
+      background: #0f0f0f;
+      color: #ededed;
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    }
+    .card {
+      max-width: 560px;
+      margin: 10vh auto;
+      padding: 32px;
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 14px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.4);
+    }
+    h1 { margin: 0 0 8px; font-size: 22px; font-weight: 600; }
+    p.sub { margin: 0 0 24px; color: #8a8a8a; font-size: 14px; }
+    .row { display: flex; gap: 8px; margin-bottom: 16px; }
+    input[type="text"] {
+      flex: 1;
+      padding: 10px 12px;
+      font: inherit;
+      color: #ededed;
+      background: #0f0f0f;
+      border: 1px solid #2a2a2a;
+      border-radius: 8px;
+    }
+    button {
+      padding: 10px 18px;
+      font: inherit;
+      font-weight: 500;
+      color: #1a1300;
+      background: #ffa000;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    button:hover { background: #ffca28; }
+    ul { list-style: none; margin: 0; padding: 0; }
+    li {
+      padding: 10px 12px;
+      border-top: 1px solid #2a2a2a;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    li:first-child { border-top: none; }
+    .ts { color: #8a8a8a; font-size: 12px; white-space: nowrap; }
+    .empty { padding: 12px; color: #8a8a8a; font-style: italic; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Notes</h1>
+    <p class="sub">Stored in sqlite on the server. (Demo only — Firebase can't run this.)</p>
+    <div class="row">
+      <input id="body" type="text" placeholder="Write a note…" />
+      <button id="add">Add</button>
+    </div>
+    <ul id="list"><li class="empty">Loading…</li></ul>
+  </main>
+  <script>
+    const list = document.getElementById("list");
+    const body = document.getElementById("body");
+    const add = document.getElementById("add");
+
+    async function load() {
+      try {
+        const res = await fetch("/api/notes");
+        const json = await res.json();
+        if (!json.notes || json.notes.length === 0) {
+          list.innerHTML = '<li class="empty">No notes yet.</li>';
+          return;
+        }
+        list.innerHTML = json.notes.map(n =>
+          `<li><span>${n.body}</span><span class="ts">${n.created_at}</span></li>`
+        ).join("");
+      } catch (err) {
+        list.innerHTML = '<li class="empty">Error loading notes: ' + (err.message || err) + '</li>';
+      }
+    }
+
+    add.addEventListener("click", async () => {
+      const v = body.value.trim();
+      if (!v) return;
+      add.disabled = true;
+      try {
+        await fetch("/api/notes", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ body: v })
+        });
+        body.value = "";
+        await load();
+      } finally {
+        add.disabled = false;
+      }
+    });
+
+    load();
+  </script>
+</body>
+</html>
