@@ -206,6 +206,47 @@ Today preflight asks before installing Firebase CLI ("Install it now via npm ins
 
 The original meeting envisioned a chat UI where a non-technical user describes the app they want, Claude (or similar) generates a setup script, and the user pastes that into the terminal. Our v1 took a different turn (assume the app already exists). Worth revisiting if the toolkit gets used by anyone whose pain point is "I don't even have an app yet."
 
+### E5 — Frictionless distribution (no terminal) — **research / P1 once we want external users**
+
+The current entry point still requires a terminal. Even with everything the wizard automates, opening Terminal and typing `./deploy-app` is the wall for many non-technical users. To truly ship beyond Mauricio + his immediate team, the toolkit needs a friction-free installer story. Three paths considered:
+
+**Path A — Native desktop app (Electron) — most practical**
+
+Bundle the existing wizard (Express + React) as a `.app` (macOS) / `.exe` (Windows) / `.AppImage` (Linux). User downloads one file, double-clicks, the wizard opens in their default browser or in a built-in window.
+
+- Bundled Node runtime — no nvm needed
+- Bundled or auto-downloaded Firebase CLI on first run
+- Bash stages stay as-is, called from Electron's main process
+- Code-signed for macOS (Apple Developer cert, ~$99/year) so Gatekeeper doesn't scare users
+- Auto-updates via electron-updater
+- The wizard UI doesn't change at all; only the orchestrator is replaced
+
+Cost: ~1 week focused work for a v1 plus Apple Developer cert. Windows code-signing adds ~$300 one-time + $200/year for an Authenticode cert.
+
+**Path B — One-click installer (.pkg / .msi) — intermediate**
+
+A traditional installer that:
+1. Installs Node 22+ if missing
+2. Installs Firebase CLI globally
+3. Drops deploy-toolkit into /Applications/ or %AppData%
+4. Creates a Finder / Start Menu shortcut that runs `./deploy-app`
+
+User downloads, double-clicks installer, then double-clicks the shortcut. Terminal still exists, but user never types into it.
+
+Cost: ~3 days. Less polished than Electron — a brief terminal flash on launch.
+
+**Path C — Hosted web app — most ambitious**
+
+Run a hosted version of the wizard at e.g. deploy-toolkit.example.com. User signs in with Google, drags their app folder (or pastes a GitHub repo URL), we run the orchestrator on our infra and deploy to *their* Firebase account using their OAuth token.
+
+Cost: ~2 weeks + ongoing infra. Real security model needed (we'd briefly hold user source + a Firebase token). Worth it only after the tool has clear external demand. Probably never the first version — but the right long-term answer for users who refuse any local install.
+
+**Caveat about "fully frictionless":**
+
+Even with Path A, the first Firebase project on a new Google account still hits the 403 TOS bootstrap. The wizard handles it cleanly (Bootstrap page) but it's still 30 seconds of "click here, come back." Google constraint, not us — no public API to accept Firebase TOS programmatically.
+
+**Decision:** Revisit after A1 ships and after the colleague-share round surfaces real friction. Default expected next step: Path A (Electron), unless the colleague feedback says hosted is more important.
+
 ## F. Stale code & cosmetics
 
 ### F1 — `provision.sh` dead reads — **P3**
