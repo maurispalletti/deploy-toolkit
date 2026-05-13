@@ -84,6 +84,18 @@ console.log(`▸ Wrote ${targets.length} browser-safe value(s) to ${path}`);
 # We pipe each value into `firebase functions:secrets:set <NAME>` so it
 # never lands on stdout or in process args (the firebase CLI accepts the
 # value on stdin when invoked this way).
+if [ "$HAS_FUNCTIONS" = "no" ]; then
+  # Edge case: user classified something as server-only on a Shape A/B
+  # plan. The Classify UI already warned them; we surface a one-liner
+  # here so the deploy log shows the same context, but we don't fail.
+  NEEDS_NOTICE=$(node -p "((require('$CONFIG').secrets || {}).perKey || []).filter(k=>k.classification==='server-only').length")
+  if [ "$NEEDS_NOTICE" != "0" ]; then
+    echo "▸ ⚠  $NEEDS_NOTICE server-only value(s) classified but this app has no backend."
+    echo "  These values have no safe home in a static deploy. Re-run the wizard"
+    echo "  and either flip them to browser-safe or add a backend (Shape C)."
+  fi
+fi
+
 if [ "$HAS_FUNCTIONS" = "yes" ]; then
   # Emit a newline-separated NAME<TAB>VALUE list of server-only keys
   # with non-empty values. Empty-value keys get a manual-setup hint
