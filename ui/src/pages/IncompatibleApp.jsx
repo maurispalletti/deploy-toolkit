@@ -5,18 +5,25 @@ import { generateDbRefactorPrompt, postInspect } from "../api.js";
 
 // Block page shown after the Inspector step when the inspection flags
 // the app as DB-incompatible. Mirrors the visual + interaction pattern
-// of Bootstrap.jsx — a card with explanation, an evidence list, and
-// three options the user can pick from.
+// of Bootstrap.jsx — a card with a plain-language explanation, an
+// evidence list, and three options the user can pick from.
 //
-// Options:
-//   1. Generate refactor prompt: writes REFACTOR-FOR-FIREBASE.md into
-//      the app folder, transitions to a "prompt generated" sub-state
-//      with the path and a copy-to-clipboard helper plus a
-//      "I've refactored — retry" button that re-inspects.
-//   2. Deploy frontend only: bypass the block by setting a flag on
-//      session state; the parent rewinds the wizard to the questions
-//      page so the user can re-answer with the bypass applied.
-//   3. Cancel: reset state and go back to Welcome.
+// The "Generate refactor prompt" path used to dump a file path + open
+// instructions. It now shows the prompt body inline with a one-click
+// Copy button so non-tech users can paste straight into their AI tool
+// without ever opening the file.
+
+const DRIVER_NAMES = {
+  sqlite: "SQLite",
+  postgres: "Postgres",
+  mysql: "MySQL",
+  mongodb: "MongoDB",
+  mongoose: "MongoDB (via Mongoose)",
+  prisma: "Prisma",
+  "fs-writes": "local file writes",
+};
+
+function driverLabel(d) { return DRIVER_NAMES[d] ?? d; }
 
 export default function IncompatibleApp({
   appDir,
@@ -27,6 +34,7 @@ export default function IncompatibleApp({
 }) {
   const [stage, setStage] = useState("decide"); // "decide" | "generated" | "retrying"
   const [path, setPath] = useState("");
+  const [content, setContent] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -37,8 +45,9 @@ export default function IncompatibleApp({
   async function handleGenerate() {
     setError("");
     try {
-      const { path: outPath } = await generateDbRefactorPrompt(appDir, inspection);
+      const { path: outPath, content: md } = await generateDbRefactorPrompt(appDir, inspection);
       setPath(outPath);
+      setContent(md);
       setStage("generated");
     } catch (err) {
       setError(err.message || String(err));
@@ -47,7 +56,7 @@ export default function IncompatibleApp({
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(path);
+      await navigator.clipboard.writeText(content);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -60,9 +69,6 @@ export default function IncompatibleApp({
     setError("");
     try {
       const fresh = await postInspect(appDir);
-      // Hand the new inspection back to the parent. App.jsx decides whether
-      // to re-route to the Inspector preview (still incompatible — back here)
-      // or forward (clean — onward to Questions).
       onRefactor?.(fresh);
     } catch (err) {
       setError(err.message || String(err));
@@ -72,87 +78,133 @@ export default function IncompatibleApp({
 
   if (stage === "generated" || stage === "retrying") {
     return (
-      <Card title="Refactor prompt generated"
-            sub="Hand this file to Claude Code (or any AI coding tool) to apply the migration.">
-        <div className="status">
-          <div className="status-icon ok">✓</div>
-          <div>
-            <div style={{fontWeight: 600}}>Written to your app folder</div>
-            <code className="codepath" style={{display: "inline-block", marginTop: 4}}>{path}</code>
-          </div>
+      <Card
+        title="Here's the upgrade plan — copy this into your AI tool"
+        sub="The text below tells an AI coding assistant (Claude Code, Cursor, etc.) exactly how to update your app so Firebase can run it. Hit Copy, paste it into your tool's chat, and it'll do the work."
+      >
+        <div className="prompt-actions">
+          <Button onClick={handleCopy} variant="primary" className="copy-prompt-btn">
+            {copied ? "✓ Copied to clipboard" : "📋 Copy the whole prompt"}
+          </Button>
+          <span className="muted" style={{fontSize: 12}}>
+            Also saved to <code className="codepath">{path}</code> in case you want to keep it.
+          </span>
         </div>
-        <ol style={{paddingLeft: 20, lineHeight: 1.8, marginTop: 20}}>
-          <li>Open <code className="codepath">{path}</code> (or copy it to your clipboard with the button below).</li>
-          <li>Paste the entire file into Claude Code, Cursor, or another AI tool — point it at this app folder.</li>
-          <li>Let the AI apply the refactor (replace the DB driver with Firestore via the storage-adapter pattern in the file).</li>
-          <li>Come back here and click <strong>I've refactored — retry</strong> below.</li>
-        </ol>
+
+        <pre className="prompt-preview">{content}</pre>
+
+        <div className="incompat-instructions">
+          <div className="instructions-title">When you're ready to come back</div>
+          <ol>
+            <li>Open your AI coding tool (Claude Code, Cursor, ChatGPT, etc.).</li>
+            <li>Make sure it's pointed at this folder: <code className="codepath">{appDir}</code></li>
+            <li>Paste the prompt and let it apply the changes.</li>
+            <li>Come back here and click <strong>I've updated my app — try again</strong>.</li>
+          </ol>
+        </div>
+
         {error && (
           <div className="warning-banner" style={{marginTop: 16}}>
             <div className="warning-icon">⚠️</div>
             <div className="warning-body">
-              <div className="warning-title">Re-inspection failed</div>
+              <div className="warning-title">Something went wrong re-checking your app</div>
               <div className="warning-text">{error}</div>
             </div>
           </div>
         )}
+
         <div className="btn-row split">
-          <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-          <div style={{display: "flex", gap: 12}}>
-            <Button variant="secondary" onClick={handleCopy}>
-              {copied ? "Copied!" : "Copy path"}
-            </Button>
-            <Button onClick={handleRetry} disabled={stage === "retrying"}>
-              {stage === "retrying" ? "Re-inspecting…" : "I've refactored — retry"}
-            </Button>
-          </div>
+          <Button variant="ghost" onClick={onCancel}>Start over</Button>
+          <Button onClick={handleRetry} disabled={stage === "retrying"}>
+            {stage === "retrying" ? "Checking…" : "I've updated my app — try again"}
+          </Button>
         </div>
       </Card>
     );
   }
 
+  // Friendly explanation of what was detected, in plain English.
+  const driverList = drivers.length > 0
+    ? drivers.map(driverLabel).join(", ")
+    : "a local database";
+
   return (
-    <Card title="This app uses a database Firebase can't run"
-          sub="Cloud Functions don't have a persistent filesystem and don't run sqlite, postgres, mysql, or mongodb. We can't deploy this app as-is, but here are your options.">
-      <div className="warning-banner">
-        <div className="warning-icon">⚠️</div>
-        <div className="warning-body">
-          <div className="warning-title">Detected drivers</div>
-          <div className="warning-text">
-            {drivers.length > 0
-              ? drivers.map(d => (
-                  <code key={d} className="codepath" style={{marginRight: 6}}>{d}</code>
-                ))
-              : "(none — surface scan only)"}
-          </div>
-          {evidence.length > 0 && (
-            <ul style={{margin: "8px 0 0", paddingLeft: 18, color: "var(--muted)", fontSize: 13, lineHeight: 1.6}}>
+    <Card
+      title="Your app needs a different way to save data"
+      sub={`Your app uses ${driverList} to remember things — that works great on your computer, but it can't work on the internet the same way. Don't worry: there's a clear path to fix it, and you don't have to write the fix yourself.`}
+    >
+      <div className="why-banner">
+        <div className="why-title">Why it doesn't work as-is</div>
+        <p className="why-text">
+          When your app runs on Firebase, it runs on Google's servers — and those
+          servers don't keep a permanent hard drive. Anything saved to {driverList}{" "}
+          would disappear shortly after each visit. Apps on the internet need a
+          different kind of database, one that lives in the cloud (Firebase
+          gives you one for free called <strong>Firestore</strong>).
+        </p>
+
+        {evidence.length > 0 && (
+          <details className="why-details">
+            <summary>Show what we found in your code ({(details.evidence ?? []).length} spot{(details.evidence ?? []).length === 1 ? "" : "s"})</summary>
+            <ul className="evidence-list">
               {evidence.map((e, i) => (
                 <li key={i}>
-                  <code className="codepath">{e.file}:{e.line}</code> — {e.kind}: <span style={{fontFamily: "var(--font-mono)"}}>{e.excerpt}</span>
+                  <code className="codepath">{e.file}:{e.line}</code> — uses {driverLabel(e.kind)}:
+                  <code className="excerpt"> {e.excerpt}</code>
                 </li>
               ))}
               {(details.evidence ?? []).length > evidence.length && (
-                <li>…and {(details.evidence ?? []).length - evidence.length} more in the generated prompt.</li>
+                <li className="muted">…and {(details.evidence ?? []).length - evidence.length} more (all listed in the generated prompt).</li>
               )}
             </ul>
-          )}
-        </div>
+          </details>
+        )}
       </div>
 
-      <div style={{display: "flex", flexDirection: "column", gap: 12, marginTop: 24}}>
-        <Button onClick={handleGenerate}>🪄 Generate refactor prompt</Button>
-        <Button variant="secondary" onClick={onDeployFrontendOnly}>
-          Deploy frontend only (skip backend)
-        </Button>
-        <Button variant="ghost" onClick={onCancel}>Cancel</Button>
+      <div className="choice-list">
+        <div className="choice-header">What would you like to do?</div>
+
+        <button className="choice-card recommended" onClick={handleGenerate}>
+          <div className="choice-icon">🪄</div>
+          <div className="choice-body">
+            <div className="choice-title">Get help from an AI to upgrade my app</div>
+            <div className="choice-meta">
+              We write a clear "to-do list" for an AI tool (Claude Code, Cursor, etc.).
+              You paste it in, the AI updates your app for you, you come back and deploy.
+              <strong className="choice-tag"> Recommended.</strong>
+            </div>
+          </div>
+        </button>
+
+        <button className="choice-card" onClick={onDeployFrontendOnly}>
+          <div className="choice-icon">🖼️</div>
+          <div className="choice-body">
+            <div className="choice-title">Deploy just the visible part for now</div>
+            <div className="choice-meta">
+              We'll skip the server and database. Your app's pages will be on
+              the internet, but anything that saves or loads data won't work yet.
+              Good for showing screenshots; not for real use.
+            </div>
+          </div>
+        </button>
+
+        <button className="choice-card" onClick={onCancel}>
+          <div className="choice-icon">↩️</div>
+          <div className="choice-body">
+            <div className="choice-title">Stop and decide later</div>
+            <div className="choice-meta">
+              Nothing has been created on Firebase yet. We'll exit and you can
+              come back when you've decided.
+            </div>
+          </div>
+        </button>
       </div>
 
       {error && (
         <div className="warning-banner" style={{marginTop: 16}}>
           <div className="warning-icon">⚠️</div>
           <div className="warning-body">
-            <div className="warning-title">Couldn't write the prompt</div>
+            <div className="warning-title">Couldn't generate the prompt</div>
             <div className="warning-text">{error}</div>
           </div>
         </div>

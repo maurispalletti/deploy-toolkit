@@ -8,8 +8,11 @@
 //
 // POST /api/refactor-prompt/db
 //   body: { appDir, inspection }
-//   writes: <appDir>/REFACTOR-FOR-FIREBASE.md
-//   returns: { path }
+//   writes: <appDir>/REFACTOR-FOR-FIREBASE.md (for reference)
+//   returns: { path, content } — content is the full markdown so the
+//     wizard can display it inline for one-click copy/paste into the
+//     user's AI tool. Writing the file is still useful for users who
+//     want to commit it or share it with a teammate.
 
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -27,15 +30,15 @@ export async function writeDbRefactorPrompt(appDir, inspection) {
   });
   const outPath = join(appDir, "REFACTOR-FOR-FIREBASE.md");
   await writeFile(outPath, md);
-  return outPath;
+  return { path: outPath, content: md };
 }
 
 export function mountRefactor(app) {
   app.post("/api/refactor-prompt/db", async (req, res) => {
     try {
       const { appDir, inspection } = req.body ?? {};
-      const path = await writeDbRefactorPrompt(appDir, inspection);
-      res.json({ path });
+      const result = await writeDbRefactorPrompt(appDir, inspection);
+      res.json(result);
     } catch (err) {
       res.status(500).json({ error: err.message });
     }
