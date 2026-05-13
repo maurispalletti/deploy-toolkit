@@ -6,6 +6,7 @@ import { runStage } from "../api.js";
 
 const STAGES = [
   { id: "provision", name: "Setting up your Firebase project" },
+  { id: "inject-secrets", name: "Setting up your app's config values" },
   { id: "build", name: "Building your app" },
   { id: "deploy", name: "Putting it on the internet" },
 ];

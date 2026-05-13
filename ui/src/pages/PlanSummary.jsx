@@ -4,9 +4,14 @@ import Button from "../components/Button.jsx";
 import BackButton from "../components/BackButton.jsx";
 import { postPlan } from "../api.js";
 
-export default function PlanSummary({ appDir, answers, onBack, onDeploy }) {
+export default function PlanSummary({ appDir, answers, secretsAnswers, onBack, onDeploy }) {
   const [plan, setPlan] = useState(null);
-  useEffect(() => { postPlan(appDir, answers).then(setPlan); }, [appDir, answers]);
+  useEffect(() => {
+    // Fold the per-key classification answers into the payload so the
+    // planner can include them in the saved plan.
+    const payload = { ...answers, secrets: secretsAnswers ?? null };
+    postPlan(appDir, payload).then(setPlan);
+  }, [appDir, answers, secretsAnswers]);
 
   if (!plan) return <Card title="Putting together your plan…" sub="One moment." />;
 
@@ -27,6 +32,19 @@ export default function PlanSummary({ appDir, answers, onBack, onDeploy }) {
     title: "Set up the server (Cloud Functions)",
     meta: <>Folder: <code className="codepath">{plan.functions.dir}</code><div className="meta-hint">For anything that needs to run on a server, not in the browser.</div></>
   });
+  // Surface the secrets ingestion step only when there's anything to ingest.
+  const perKey = plan.secrets?.perKey ?? [];
+  const browserCount = perKey.filter(p => p.classification === "browser-safe").length;
+  const serverCount = perKey.filter(p => p.classification === "server-only").length;
+  if (perKey.length > 0) {
+    const bits = [];
+    if (browserCount > 0) bits.push(`${browserCount} into the build`);
+    if (serverCount > 0) bits.push(`${serverCount} as Firebase secret${serverCount === 1 ? "" : "s"}`);
+    items.push({
+      title: "Set up your app's config values",
+      meta: <>{bits.join(" + ")}<div className="meta-hint">We'll put browser-safe values into <code className="codepath">.env.production</code> and server-only values into Firebase Functions secrets.</div></>
+    });
+  }
   if (plan.build.command) items.push({
     title: "Build your app",
     meta: <>Run <code className="codepath">{plan.build.command}</code><div className="meta-hint">Turn your source code into files browsers can use.</div></>

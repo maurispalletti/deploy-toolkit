@@ -6,6 +6,7 @@ const TOOLKIT_DIR = dirname(dirname(dirname(dirname(fileURLToPath(import.meta.ur
 const STAGES = {
   preflight: "stages/preflight.sh",
   provision: "stages/provision.sh",
+  "inject-secrets": "stages/inject-secrets.sh",
   build: "stages/build.sh",
   deploy: "stages/deploy.sh",
   report: "stages/report.sh",

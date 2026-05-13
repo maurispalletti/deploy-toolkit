@@ -9,7 +9,39 @@ import Progress from "./pages/Progress.jsx";
 import Done from "./pages/Done.jsx";
 import Bootstrap from "./pages/Bootstrap.jsx";
 import IncompatibleApp from "./pages/IncompatibleApp.jsx";
+import HardcodedSecretsBlock from "./pages/HardcodedSecretsBlock.jsx";
+import SecretsClassify from "./pages/SecretsClassify.jsx";
 import { getAppDir } from "./api.js";
+
+// Wizard step ID map. The history of these numbers is sticky — earlier
+// commits already wired up 1..9 — so we just keep appending for new
+// pages rather than renumber.
+//
+//   1 Welcome
+//   2 Preflight
+//   3 Inspector
+//   4 Questions
+//   5 Plan Summary
+//   6 Progress
+//   7 Done
+//   8 Bootstrap (off-the-happy-path 403 recovery)
+//   9 IncompatibleApp (D5 block)
+//  10 HardcodedSecretsBlock (C6 phase 1)
+//  11 SecretsClassify (C6 phase 2)
+
+// Routing helper: given an inspection result, pick the next step on the
+// happy path. Used after Inspector confirm AND after re-inspections from
+// the block pages (so e.g. once the user fixes their secrets, we still
+// fall through to Classify if there are env vars to triage).
+function nextStepFromInspection(inspection) {
+  if (inspection?.dbIncompat) return 9;
+  if ((inspection?.hasHardcodedSecrets ?? 0) > 0) return 10;
+  const hasEnvKeys =
+    (inspection?.secrets?.envRefs?.length ?? 0) > 0 ||
+    (inspection?.secrets?.envExampleKeys?.length ?? 0) > 0;
+  if (hasEnvKeys) return 11;
+  return 4;
+}
 
 export default function App() {
   const [appDir, setAppDir] = useState("");
@@ -18,6 +50,9 @@ export default function App() {
   const [inspection, setInspection] = useState(null);
   const [answers, setAnswers] = useState(null);
   const [plan, setPlan] = useState(null);
+  // C6 phase-2 classification answers — stored separately from `answers`
+  // so the Questions page doesn't need to know about per-key state.
+  const [secretsAnswers, setSecretsAnswers] = useState(null);
 
   useEffect(() => {
     getAppDir().then((d) => {
@@ -40,6 +75,14 @@ export default function App() {
   const next = () => setStep(s => Math.min(7, s + 1));
   const back = () => setStep(s => Math.max(1, s - 1));
 
+  function resetWizard() {
+    setStep(1);
+    setInspection(null);
+    setAnswers(null);
+    setPlan(null);
+    setSecretsAnswers(null);
+  }
+
   if (!loaded) return <div className="container">Loading…</div>;
 
   return (
@@ -55,70 +98,83 @@ export default function App() {
       {step === 2 && <Preflight onBack={back} onNext={next} />}
       {step === 3 && <Inspector appDir={appDir} onBack={back} onConfirm={(i) => {
         setInspection(i);
-        // If the inspector flagged the app as DB-incompatible, jump to the
-        // block page instead of forwarding to Questions. The user picks one
-        // of three options (refactor prompt / frontend-only / cancel) and
-        // we re-route from there.
-        if (i.dbIncompat) setStep(9);
-        else next();
+        // Routing: prefer the block pages (DB incompat, then hardcoded
+        // secrets) before the classify page, then Questions.
+        setStep(nextStepFromInspection(i));
       }} />}
       {step === 4 && <Questions inspection={inspection} defaults={answers} onBack={back} onNext={(a) => { setAnswers(a); next(); }} />}
-      {step === 5 && <PlanSummary appDir={appDir} answers={answers} onBack={back} onDeploy={(p) => { setPlan(p); next(); }} />}
+      {step === 5 && <PlanSummary appDir={appDir} answers={answers} secretsAnswers={secretsAnswers} onBack={back} onDeploy={(p) => { setPlan(p); next(); }} />}
       {step === 6 && <Progress appDir={appDir} onDone={next}
         onError={(err) => {
           if (err.code === "NEEDS_BOOTSTRAP") setStep(8);
           else alert(`Stage ${err.stage} failed (exit ${err.exitCode}).`);
         }} />}
-      {step === 7 && <Done plan={plan} onRedeploy={() => setStep(6)} onAnother={() => { setStep(1); setInspection(null); setAnswers(null); setPlan(null); }} />}
+      {step === 7 && <Done plan={plan} onRedeploy={() => setStep(6)} onAnother={resetWizard} />}
       {step === 8 && <Bootstrap onRetry={() => setStep(6)} />}
       {step === 9 && (
         <IncompatibleApp
           appDir={appDir}
           inspection={inspection}
-          // After re-inspection: if the user resolved the incompat, forward
-          // them to Questions with the fresh inspection. If they didn't,
-          // stay on the block page with the fresh evidence.
+          // After re-inspection: route the same way Inspector does. If
+          // the user resolved the incompat AND there are no secrets to
+          // block on, that lands them on Classify or Questions; if any
+          // block remains, they stay on the appropriate block page.
           onRefactor={(fresh) => {
             setInspection(fresh);
-            if (fresh.dbIncompat) {
-              // Still incompatible — stay on this page. The page itself
-              // resets back to the "decide" stage on the next render
-              // because the inspection prop changed.
-              setStep(9);
-            } else {
-              setStep(4);
-            }
+            setStep(nextStepFromInspection(fresh));
           }}
           onDeployFrontendOnly={() => {
-            // Force shape A — drop the backend from the plan. The
-            // Questions page recomputes shape on submit, so we still
-            // need a way to communicate "user accepted the bypass".
-            // We do it via answers: pre-seed with the bypass flag so
-            // Questions can render the heads-up and the planner can
-            // see the intent if it ever wants to gate on it.
+            // Force shape A — drop the backend from the plan. Same
+            // mutation as before: pretend the inspector said no backend
+            // so Questions and the planner generate a Shape A/B plan.
             setAnswers({
               ...(answers ?? {}),
               dbIncompatBypass: "frontend-only",
               needsAuth: false,
               needsDb: false
             });
-            // Pretend the inspector said no backend so Questions and
-            // the planner generate a Shape A/B plan. Also clear the
-            // dbIncompat flag so going Back from Questions doesn't
-            // immediately re-trigger the block on the next confirm.
-            setInspection({
+            const adjusted = {
               ...inspection,
               hasBackend: false,
               suggestedShape: inspection.framework === "none" ? "A" : "A_or_B",
               dbIncompat: false
-            });
-            setStep(4);
+            };
+            setInspection(adjusted);
+            // Even with the backend dropped, hardcoded secrets and env
+            // vars still matter (the frontend bundle is public), so we
+            // route through the same helper.
+            setStep(nextStepFromInspection(adjusted));
           }}
-          onCancel={() => {
-            setStep(1);
-            setInspection(null);
-            setAnswers(null);
-            setPlan(null);
+          onCancel={resetWizard}
+        />
+      )}
+      {step === 10 && (
+        <HardcodedSecretsBlock
+          appDir={appDir}
+          inspection={inspection}
+          onRefactor={(fresh) => {
+            setInspection(fresh);
+            setStep(nextStepFromInspection(fresh));
+          }}
+          onCancel={resetWizard}
+        />
+      )}
+      {step === 11 && (
+        <SecretsClassify
+          inspection={inspection}
+          defaults={secretsAnswers}
+          onBack={() => {
+            // Going Back from Classify: most users came from Inspector
+            // (step 3), since there were no hardcoded secrets to block.
+            // Some came from HardcodedSecretsBlock (step 10) after a
+            // successful re-inspection. We send them back to step 3 in
+            // either case — the inspector page re-runs the scan and
+            // we re-route forward from there.
+            setStep(3);
+          }}
+          onNext={(s) => {
+            setSecretsAnswers(s);
+            setStep(4);
           }}
         />
       )}

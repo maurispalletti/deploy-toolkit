@@ -51,6 +51,11 @@ if [ "$USE_CLI" = "true" ]; then
   echo
   "$TOOLKIT_DIR/stages/provision.sh" "$APP_DIR"
   echo
+  # Call inject-secrets via bash so we don't require the +x bit on the
+  # file (some checkouts lose it). The script is a no-op when plan.secrets
+  # is empty, so this is safe to always run.
+  bash "$TOOLKIT_DIR/stages/inject-secrets.sh" "$APP_DIR"
+  echo
   "$TOOLKIT_DIR/stages/build.sh" "$APP_DIR"
   echo
   "$TOOLKIT_DIR/stages/deploy.sh" "$APP_DIR"
