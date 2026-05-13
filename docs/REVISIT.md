@@ -15,13 +15,48 @@ Items are tagged by area and rough priority. Priority is the writer's guess and 
 
 ## A. Auth & sign-in
 
-### A1 — Scaffold a sign-in component for known frameworks (option B) — **P1**
+### A1 — Scaffold sign-in code in two ways (user picks) — **P1**
 
 Today, when the wizard's "Will users sign in?" question is `yes`, the planner sets `auth.providers: ["google"]`, the report stage prints a deep-link to enable Google sign-in in the Firebase Console — and **the user's app code is never touched**. The deployed app still doesn't gate anything until the user adds Firebase Auth themselves.
 
-For known frameworks (Vite-React, Next.js, plain HTML) we could scaffold a minimal `<SignInWithGoogle />` component and inject the Firebase config into the project automatically. The wizard would ask which page/route to gate.
+**Design: the wizard offers the user two choices when auth is needed.** Both share the same SDK-config injection mechanism; only the code-writing step differs.
 
-Scope: per-framework templates, AST edits to inject imports into the entry component, generated `firebase-config.js` file populated from `firebase apps:sdkconfig`.
+**Common to both paths:**
+
+- After provision, the wizard runs a new helper (`lib/sdk-config.mjs`) that calls `firebase apps:sdkconfig WEB --project <id> --json`, creating a Web App on the project first if none exists.
+- The fetched config object (apiKey, projectId, etc.) is written to the user's source. For Vite-React that's `<app>/src/firebase-config.js`; for Next.js `<app>/lib/firebase-config.js`; for plain HTML a root `firebase-config.js` + an inline `<script>` injection into `index.html`.
+- This step happens whether the user picks auto-inject or refactor-prompt — the config file is harmless on its own and is required for any auth code (theirs or ours) to work.
+
+**Path 1 — Auto-inject (the magic option)**
+
+For known frameworks, the wizard scaffolds a working sign-in component AND wires it into the entry component idempotently:
+
+- Templates under `templates/auth/<framework>/`.
+- For Vite-React: copy `SignInWithGoogle.jsx` to `<app>/src/`, splice an import and a render into `<app>/src/App.jsx`.
+- For Next.js: copy `SignInWithGoogle.tsx` (or `.jsx`) to `<app>/components/`, splice into `<app>/app/layout.tsx` (or `pages/_app.jsx` for older Next).
+- For plain HTML: inject a `<button id="signin">` + a `<script type="module">` block into `<app>/index.html`.
+- Run `npm install firebase` in the app dir if it's not in `package.json`.
+- Idempotent: detect existing import/render and skip splicing.
+- After deploy, the live URL shows a working Sign-in with Google button out of the box.
+
+Fragility: AST manipulation for the splice. We can hand-roll regex-based "insert after the imports block" / "insert at the top of the returned JSX" — good-enough for vibecoded entry points, less reliable on heavily customized ones. Fallback when splicing fails: switch to Path 2 automatically.
+
+**Path 2 — Generate a refactor prompt (the safe option)**
+
+Mirrors the D5 incompat-DB flow:
+
+- Wizard writes a `REFACTOR-FOR-AUTH.md` to the app folder containing: detected framework, generated `firebase-config.js` location, recipe for adding sign-in (component + entry-point splice + dep install), and re-run note.
+- UI shows the prompt content inline (scrollable code block + Copy button, same as the IncompatibleApp page).
+- User pastes into Claude Code / Cursor, the AI applies the refactor, user re-runs `./deploy-app`.
+
+This path is honest about the limits of AST splicing and gives users with non-trivial entry points an out.
+
+**Where the user picks:**
+
+- A new wizard page after Questions (only shown when `needsAuth` is true): "How would you like sign-in added to your app?" with two big choice cards — "Add it for me (auto)" and "Give me a prompt for my AI tool". The Plan Summary reflects the choice as one of the steps.
+- Default selection: auto-inject for known frameworks, refactor-prompt for unknown.
+
+Scope: per-framework auto-inject templates (Vite-React first; Next.js + plain HTML follow-ups), the regex-splice helper, the new choice page, and `REFACTOR-FOR-AUTH.md` template reusing the shared `lib/refactor-prompts/template.mjs` helper from D5.
 
 ### A2 — Programmatic auth-provider enable — **research**
 
