@@ -5,9 +5,9 @@ import StageCard from "../components/StageCard.jsx";
 import { runStage } from "../api.js";
 
 const STAGES = [
-  { id: "provision", name: "Provisioning Firebase project" },
+  { id: "provision", name: "Setting up your Firebase project" },
   { id: "build", name: "Building your app" },
-  { id: "deploy", name: "Deploying to Firebase Hosting" },
+  { id: "deploy", name: "Putting it on the internet" },
 ];
 
 export default function Progress({ appDir, onDone, onError }) {
@@ -48,7 +48,10 @@ export default function Progress({ appDir, onDone, onError }) {
   }, [appDir]);
 
   return (
-    <Card title="Deploying…" sub="Live output from each stage. Click a stage to expand.">
+    <Card
+      title="Working on it…"
+      sub="Each step might take 10–60 seconds. You can watch the details by clicking a step, or just wait for green checkmarks."
+    >
       {STAGES.map((s, i) => (
         <StageCard
           key={s.id}

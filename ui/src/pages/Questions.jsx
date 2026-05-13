@@ -25,25 +25,39 @@ export default function Questions({ inspection, defaults, onBack, onNext }) {
   }
 
   return (
-    <Card title="A few quick questions"
-          sub="These help us pick the right Firebase setup for your app.">
+    <Card
+      title="A few quick questions about your app"
+      sub="Three things to know so we set Firebase up the right way. There are no wrong answers — you can always come back and change them."
+    >
       <div className="field">
-        <label>What name for this app?</label>
+        <label>What should we call your app?</label>
         <input type="text" value={appName} onChange={e => setAppName(e.target.value)} />
-        <div className="help">Used as your Firebase project ID. We'll add a small random suffix.</div>
-      </div>
-      <div className="field">
-        <label>Will users need to sign in?</label>
-        <RadioRow name="auth" value={needsAuth} onChange={setNeedsAuth} options={yesNo} />
         <div className="help">
-          If yes, we'll enable Google sign-in for your project. You'll need to add Firebase Auth code to your app yourself — we'll link you to a guide on the Done page.
+          This becomes part of your web address: <code className="codepath">{appName || "my-app"}-xxxx.web.app</code>.
+          We add a few random letters at the end so it's unique on Firebase.
         </div>
       </div>
+
       <div className="field">
-        <label>Does the app need to remember things between visits?</label>
-        <RadioRow name="db" value={needsDb} onChange={setNeedsDb} options={yesNo} />
-        <div className="help">If yes, we'll set up Firestore with locked-down default rules.</div>
+        <label>Do people need to sign in to use your app?</label>
+        <RadioRow name="auth" value={needsAuth} onChange={setNeedsAuth} options={yesNo} />
+        <div className="help">
+          {needsAuth === "yes"
+            ? <>Got it — we'll turn on Google sign-in for your Firebase project. <strong>Heads up:</strong> you'll need to add a sign-in button to your app's code yourself. We'll point you to a guide on the last screen.</>
+            : "Pick this if anyone with the link should be able to use your app without logging in."}
+        </div>
       </div>
+
+      <div className="field">
+        <label>Does your app need to save data between visits?</label>
+        <RadioRow name="db" value={needsDb} onChange={setNeedsDb} options={yesNo} />
+        <div className="help">
+          {needsDb === "yes"
+            ? "We'll set up Firestore — Firebase's online database — with safe defaults (only signed-in users can read and write their own data)."
+            : "Pick this if your app doesn't need to remember anything (e.g. a calculator, a static landing page, a one-off form that emails you the answer)."}
+        </div>
+      </div>
+
       <div className="btn-row split">
         <BackButton onClick={onBack} />
         <Button onClick={submit}>Continue</Button>

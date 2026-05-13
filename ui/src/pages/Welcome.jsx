@@ -26,21 +26,23 @@ export default function Welcome({ appDir, onAppDirChange, onNext }) {
   const hasAppDir = appDir && appDir.length > 0;
 
   return (
-    <Card title="Let's get your app on the internet"
-          sub="We'll set up Firebase Hosting, ask a few quick questions, and deploy.">
+    <Card
+      title="Let's get your app online"
+      sub="We'll put your app on the internet using Firebase (Google's free hosting service). We ask a few quick questions, then handle all the setup for you."
+    >
 
       {hasAppDir ? (
         <StatusRow
           state="ok"
-          title="App folder selected"
+          title="Got it — we'll deploy this folder"
           meta={<span className="codepath">{appDir}</span>}
-          action={<a className="link" onClick={browse}>Choose different</a>}
+          action={<a className="link" onClick={browse}>Change folder</a>}
         />
       ) : (
         <StatusRow
           state="pending"
-          title="No app folder selected yet"
-          meta="Pick the folder of the app you want to deploy."
+          title="Which folder is your app in?"
+          meta="Pick the folder where your app's code lives (the one with index.html or package.json inside)."
           action={
             <Button variant="secondary" onClick={browse} disabled={picking}>
               {picking ? "Opening picker…" : "Pick folder"}
@@ -57,7 +59,7 @@ export default function Welcome({ appDir, onAppDirChange, onNext }) {
 
       <div className="btn-row split">
         <span className="muted" style={{fontSize:13}}>
-          Or use the CLI: <code className="codepath">./deploy-app /path/to/app --cli</code>
+          Comfortable with a terminal? Try CLI mode: <code className="codepath">./deploy-app /path --cli</code>
         </span>
         <Button onClick={onNext} disabled={!hasAppDir}>Get started</Button>
       </div>

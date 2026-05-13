@@ -291,3 +291,53 @@ body {
   font-size: 13px;
   color: var(--text);
 }
+
+/* Inspector preview hints */
+.insp-hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+/* Plan-list meta hint */
+.plan-list .meta-hint { font-size: 12px; color: var(--muted); margin-top: 4px; line-height: 1.5; }
+
+
+/* Done page additions */
+.done-sub {
+  color: var(--muted);
+  font-size: 14px;
+  margin: 8px 0 0;
+  line-height: 1.55;
+  max-width: 440px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.done-note {
+  margin: 24px auto 0;
+  max-width: 480px;
+  padding: 14px 18px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  text-align: left;
+}
+.done-note-title { font-weight: 600; font-size: 14px; margin-bottom: 6px; color: var(--orange); }
+.done-note-text { font-size: 13px; color: var(--text); line-height: 1.55; margin-bottom: 12px; }
+.done-tip {
+  margin: 28px auto 0;
+  max-width: 480px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+/* Bootstrap page numbered steps */
+.bootstrap-steps { display: flex; flex-direction: column; gap: 14px; margin-bottom: 8px; }
+.bootstrap-step { display: flex; gap: 14px; align-items: flex-start; }
+.bootstrap-num {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: rgba(255, 160, 0, 0.18);
+  color: var(--orange);
+  font-weight: 600; font-size: 13px;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+}
+.bootstrap-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+.bootstrap-meta { font-size: 13px; color: var(--muted); line-height: 1.55; }

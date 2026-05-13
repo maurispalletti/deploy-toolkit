@@ -8,31 +8,54 @@ export default function PlanSummary({ appDir, answers, onBack, onDeploy }) {
   const [plan, setPlan] = useState(null);
   useEffect(() => { postPlan(appDir, answers).then(setPlan); }, [appDir, answers]);
 
-  if (!plan) return <Card title="Preparing your plan…" sub="" />;
+  if (!plan) return <Card title="Putting together your plan…" sub="One moment." />;
 
   const items = [];
-  items.push({ title: "Create Firebase project", meta: plan.firebase.projectId });
-  items.push({ title: "Configure Firebase Hosting", meta: <>Publishing <code className="codepath">{plan.hosting.publicDir}</code></> });
-  if (plan.firestore) items.push({ title: "Set up Firestore", meta: "Locked-down default rules — authenticated users can read/write their own data" });
-  if (plan.functions) items.push({ title: "Configure Cloud Functions", meta: `Functions dir: ${plan.functions.dir}` });
-  if (plan.build.command) items.push({ title: "Build your app", meta: <code className="codepath">{plan.build.command}</code> });
-  items.push({ title: "Deploy", meta: "Upload to Firebase Hosting and finalize" });
+  items.push({
+    title: "Create a space on Firebase for your app",
+    meta: <>Project name: <code className="codepath">{plan.firebase.projectId}</code><div className="meta-hint">A private home on Google's servers, just for your app. Free.</div></>
+  });
+  items.push({
+    title: "Set up the website hosting",
+    meta: <>We'll publish from <code className="codepath">{plan.hosting.publicDir}</code><div className="meta-hint">So your URL works in any browser.</div></>
+  });
+  if (plan.firestore) items.push({
+    title: "Set up the online database",
+    meta: <>Firestore — Google's cloud database<div className="meta-hint">Locked down by default: only signed-in users can read/write their own data.</div></>
+  });
+  if (plan.functions) items.push({
+    title: "Set up the server (Cloud Functions)",
+    meta: <>Folder: <code className="codepath">{plan.functions.dir}</code><div className="meta-hint">For anything that needs to run on a server, not in the browser.</div></>
+  });
+  if (plan.build.command) items.push({
+    title: "Build your app",
+    meta: <>Run <code className="codepath">{plan.build.command}</code><div className="meta-hint">Turn your source code into files browsers can use.</div></>
+  });
+  items.push({
+    title: "Send everything to Firebase",
+    meta: <>Upload and publish<div className="meta-hint">You'll get a live URL at the end.</div></>
+  });
 
   const needsBlaze = plan.functions !== null;
 
   return (
-    <Card title="Here's the plan" sub="Review before we deploy. Nothing has been created yet.">
+    <Card
+      title="Here's what we're going to do"
+      sub="Have a quick look. Nothing has been created yet — clicking Deploy is what actually starts the work."
+    >
 
       {needsBlaze && (
         <div className="warning-banner">
           <div className="warning-icon">⚠️</div>
           <div className="warning-body">
-            <div className="warning-title">This app needs Firebase's Blaze plan</div>
+            <div className="warning-title">This app needs Firebase's pay-as-you-go plan (Blaze)</div>
             <div className="warning-text">
-              Cloud Functions require pay-as-you-go billing. Small apps typically
-              stay within the free quota and cost <strong>$0/month</strong>, but
-              you'll need a credit card on Firebase before this deploys. We'll
-              show the exact upgrade link mid-deploy when your project exists.
+              Because your app has a server, Firebase requires you to be on
+              their pay-as-you-go plan. Don't panic: small apps stay inside
+              the free quota and cost <strong>$0/month</strong> in practice.
+              You'll need a credit card on Firebase before this deploys —
+              we'll show you the exact upgrade link as soon as your project
+              is created.
             </div>
             <a
               className="link"
@@ -40,7 +63,7 @@ export default function PlanSummary({ appDir, answers, onBack, onDeploy }) {
               target="_blank"
               rel="noreferrer"
             >
-              Learn about Blaze pricing ↗
+              Learn about Firebase pricing ↗
             </a>
           </div>
         </div>
