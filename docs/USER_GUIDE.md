@@ -159,9 +159,26 @@ The inspector flags this automatically — see [`samples/express-sqlite/`](../sa
 
 ### Hardcoded secrets
 
-*(Planned for REVISIT C6 — not yet implemented as of this writing.)*
+If your source contains literal API keys (Stripe `sk_live_*` / `sk_test_*`, AWS `AKIA*`, GitHub `ghp_*`, Anthropic `sk-ant-*`, OpenAI `sk-*`, Slack `xoxb-*`/`xoxp-*`, Google `AIza*`), the wizard will pause on a **Hardcoded secrets** page (step 10) before the questions. It shows every detected leak with a redacted preview (e.g. `sk_live_AbCd…XyZ9` — never the raw value) and offers three options:
 
-If your source contains literal API keys (`sk_live_*` from Stripe, `AKIA*` from AWS, `sk-ant-*` from Anthropic, etc.), the wizard will block on a **Hardcoded secrets** page and generate a `REFACTOR-SECRETS.md` walking you through moving them into `.env`. Same pattern as the incompatible-DB block — refactor with your AI tool, then re-run.
+1. **🪄 Get help moving them to a safe place** — writes `REFACTOR-SECRETS.md` into your app folder. The markdown lists every leak, explains why hardcoded keys end up in your public bundle and in git, and walks through moving them into `.env` (server) / `import.meta.env.VITE_*` (Vite client) / `process.env.NEXT_PUBLIC_*` (Next.js client). The page also shows the prompt inline with a Copy button so you can paste it into Claude Code or another AI tool. Once your AI fixes the code, click **I've moved the keys — try again** and the wizard re-scans.
+2. **I've already moved them — re-check** — runs the inspector again. If anything's still hardcoded, the page re-renders with the new evidence; otherwise the wizard continues.
+3. **Stop and decide later** — exits cleanly.
+
+Negative-test fixture: [`samples/express-with-secret/`](../samples/express-with-secret/) (Stripe test key hardcoded in `functions/index.js`).
+
+Google API keys (`AIza*`) that appear in a clearly Firebase-flavored context (a file named `firebase-config.js`, or a line with the word `firebase`) don't block the wizard — Firebase Web SDK keys legitimately start with `AIza` and are public by design. You may still see them flagged as "might be Firebase — please verify" in the evidence list so you can double-check.
+
+### Classifying your config values
+
+After clearing any hardcoded secrets — OR straight after the inspector if you didn't have any — the wizard shows a **Classify config values** page (step 11) when your app references any environment variables (`process.env.X` calls in source AND/OR keys in `.env.example`). For each unique key, you pick:
+
+- **Browser-safe** — the value will be baked into the built JavaScript. Pick this for things like app titles, public URLs, public Firebase Web SDK keys, etc.
+- **Server-only** — the value will be stored as a Firebase Functions secret (Google Cloud Secret Manager). Pick this for real secrets: Stripe live keys, OpenAI API keys, etc.
+
+You can also type the value here. Browser-safe values land in `<app>/.env.production` so Vite/Next bake them into the build. Server-only values are piped into `firebase functions:secrets:set` at deploy time. If you leave a server-only value blank, the wizard prints a one-line manual-setup hint at deploy time rather than failing — you can run `firebase functions:secrets:set NAME --project <projectId>` yourself when you're ready.
+
+Inferred defaults: anything starting with `VITE_` or `NEXT_PUBLIC_` defaults to browser-safe; everything else defaults to server-only. Shape A/B apps (no backend) get an inline warning if you classify anything as server-only — there's no backend to read the secret from, so you'd need to either flip it to browser-safe (and accept it's public) or add a backend.
 
 ## 7. Costs
 
@@ -201,6 +218,8 @@ Honest list of current limitations. Each is either tracked in [`REVISIT.md`](REV
 - **It doesn't scaffold `functions/` for apps with Express at the root.** Today, Shape C requires you to already have the Firebase-conventional `functions/` layout. REVISIT D1 (P2).
 - **It doesn't push your code to GitHub.** Tracked as REVISIT C4 — a planned new step between Plan and Build that uses `gh repo create` to back up your app.
 - **It doesn't migrate your app's local DB to Firestore for you.** D5 detects incompatible DBs and gives you a refactor prompt; the migration itself is done by you (or your AI tool).
+- **It doesn't move hardcoded secrets out of your code for you.** C6 detects them and writes a refactor prompt for your AI tool; the actual edits are done by you (or your AI). What it *does* do once your code is clean is the per-key classify + ingest step (`.env.production` and Firebase Functions secrets).
+- **It doesn't prompt for a server-only secret value mid-deploy** when you skipped typing it on the Classify page. The inject-secrets stage prints a one-line manual setup hint and continues; you'll need to run `firebase functions:secrets:set NAME --project <projectId>` yourself. REVISIT C6 (P2 follow-up).
 - **It doesn't support non-macOS folder pickers natively.** Linux/Windows users currently have to pass the path on the command line. REVISIT design pending.
 - **It doesn't support custom Firebase regions per app.** Functions are hardcoded to `europe-west3`. REVISIT D4 (P3).
 - **It doesn't have a "manage your deployed apps" view.** Each run treats the wizard like a one-shot. REVISIT E1/E2.

@@ -13,6 +13,7 @@ Plain-English walkthrough of every step the script takes when you run `./deploy-
 | 1 | Preflight | `stages/preflight.sh` | Verify Node, Firebase CLI, and login |
 | 2 | Brain | `lib/brain.mjs` | Inspect folder, interview, write config |
 | 3 | Provision | `stages/provision.sh` | Create Firebase project, write Firebase files |
+| 3.5 | Inject secrets | `stages/inject-secrets.sh` | Write `.env.production` + set Firebase Functions secrets |
 | 4 | Build | `stages/build.sh` | Run `npm install` + your build command |
 | 5 | Deploy | `stages/deploy.sh` | Run `firebase deploy --only ...` |
 | 6 | Report | `stages/report.sh` | Print the live URL |
@@ -52,6 +53,7 @@ Pure file-system inspection — no questions, no network. Runs six small modules
 - **`has-backend.mjs`** — returns `true` if the framework is `express`, or if the folder contains `functions/`, `api/`, `server/`, or `server.js`.
 - **`read-env-example.mjs`** — parses `.env.example` and returns the list of variable names (the keys, not values).
 - **`detect-db-usage.mjs`** — source-level scan for databases / persistence layers Firebase Cloud Functions can't run as-is: sqlite, postgres, mysql, mongodb, prisma, and `fs.writeFileSync`/`appendFileSync` to non-`/tmp` paths. Returns `{ incompatible, drivers, evidence }`. The inspection exposes the result as `dbIncompat` + `dbIncompatDetails`; see "Incompatible local database" under [Common failure modes](#common-failure-modes-and-fixes) for what the wizard does with it.
+- **`detect-secrets-usage.mjs`** — source-level scan for hardcoded secrets (`sk_live_*`, `AKIA*`, `ghp_*`, `sk-ant-*`, `sk-*`, `xoxb-*`, `AIza*`, etc.) plus `process.env.X` references. Google `AIza` keys are tagged `suppressed: true` when the surrounding context looks like a legitimate Firebase Web SDK config so they don't block the wizard. Returns `{ hardcoded: [{file, line, kind, redacted, suppressed, …}], envRefs, envExampleKeys }`. The inspection exposes it as `secrets` plus a `hasHardcodedSecrets` counter (non-suppressed hits only); see "Hardcoded secrets in source" under [Common failure modes](#common-failure-modes-and-fixes).
 
 It then suggests a "shape":
 
@@ -158,6 +160,15 @@ What it does, in order:
 4. **Writes `firebase.json`** by composing an object from the config — always includes `hosting`, optionally adds `firestore` and `functions` blocks.
 5. **Copies `templates/firestore.rules`** to the app folder if Firestore is configured and no rules file exists yet. The default rules let an authenticated user read/write only their own `users/{uid}` document; everything else is denied.
 
+## Stage 3.5 — Inject secrets (`stages/inject-secrets.sh`)
+
+Runs between provision and build. Reads `plan.secrets.perKey` from `deploy-app.config.json` — populated by the wizard's per-key classify page (see "Hardcoded secrets in source" below for the user-facing flow). For each entry:
+
+- **Browser-safe** → appends `NAME=value` to `<app>/.env.production` (creates the file if missing; same-NAME lines are overwritten in place rather than duplicated). Vite and Next.js bake `.env.production` into the build at stage 4.
+- **Server-only** + `plan.functions` non-null → pipes the value into `firebase functions:secrets:set NAME --project <projectId>`. The value is never echoed to stdout and never persisted by the toolkit beyond the saved config; it lives in Google Cloud Secret Manager from there. If a server-only key has no value yet (user skipped typing it on the Classify page), the stage prints a one-line manual-setup hint and continues instead of failing.
+
+The whole stage is a no-op when `plan.secrets` is null or empty, so it's safe to slot into the pipeline unconditionally — pre-C6 configs flow through untouched.
+
 ## Stage 4 — Build (`stages/build.sh`)
 
 Reads `build.command` from the config:
@@ -214,6 +225,13 @@ The shape is chosen by the brain in stage 2: backend detection forces C; then th
   - **Deploy frontend only** drops the backend from the plan (the session inspection is mutated to clear `hasBackend`, `dbIncompat`, and `suggestedShape`) so the deploy is Shape A/B. The deployed app's UI will work but anything that hit `/api/*` will fail until the migration lands.
   - **Cancel** resets state and returns to Welcome.
   Negative-test fixture for the detector lives at `samples/express-sqlite/` (better-sqlite3 in `functions/`). The positive control — same shape, no incompat — is `samples/express-real/`.
+- **Hardcoded secrets in source.** Stage 2 also runs `lib/inspector/detect-secrets-usage.mjs`, which scans source files for known secret prefixes (Stripe `sk_live_*` / `sk_test_*`, AWS `AKIA*`, GitHub `ghp_*`, Anthropic `sk-ant-*`, OpenAI `sk-*`, Slack `xoxb-*` / `xoxp-*`, Google `AIza*`). When it finds any non-suppressed hit, the inspection grows `hasHardcodedSecrets > 0` and the wizard pauses on a **Hardcoded secrets** page (step 10) before forwarding to Questions. Same three-option pattern as the DB block:
+  - **🪄 Get help moving them to a safe place** writes `REFACTOR-SECRETS.md` into the app folder via `POST /api/refactor-prompt/secrets`. The markdown lists every detected literal as `<file>:<line> — <kind> — <redacted>` (never the raw value), explains why hardcoded secrets leak into the public bundle and into git, and gives a four-step recipe: create `.env`, add it to `.gitignore`, replace each literal with `process.env.X` (server) or `import.meta.env.VITE_X` / `process.env.NEXT_PUBLIC_X` (client), re-run `./deploy-app`.
+  - **I've already moved them** re-runs `postInspect()`. If the user's refactor cleared the source, the wizard forwards to the per-key Classify page (step 11) and then to Questions; if anything's still hardcoded, the page re-renders with the new evidence.
+  - **Cancel** resets state and returns to Welcome.
+  Google `AIza` keys that appear in a clearly Firebase-flavored context (filename matches `firebase[-_]?config\.*` or the same line includes the word `firebase`) are emitted with `suppressed: true` and don't block the wizard — Firebase Web SDK keys legitimately use this prefix and are public by design. A non-suppressed AIza key still surfaces in the evidence list with a "might be Firebase — please verify" label so the user can double-check.
+  After Phase 1 (or in parallel, if there were never any hardcoded secrets), the **Classify** page (step 11) asks the user, per env-var (union of `process.env.X` references and `.env.example` keys), whether each value is browser-safe or server-only. Inferred defaults: `VITE_*` / `NEXT_PUBLIC_*` → browser-safe; everything else → server-only. The classification plus an optional value are stored as `plan.secrets.perKey` and consumed by the inject-secrets stage at deploy time.
+  Negative-test fixture for the detector lives at `samples/express-with-secret/` (Stripe test key hardcoded in `functions/index.js`). The positive control is `samples/express-real/` (no secrets).
 
 ## Further reading
 

@@ -115,7 +115,7 @@ The inspector already detects framework/backend/secrets from code, so the user d
 - Wizard shows the deep-read result with the evidence (clickable file paths). User confirms or overrides.
 - **Default fallback** when user picks "I'm not sure" with no deep-read evidence: no auth, no DB, Shape A. The Done page surfaces a card: "If you need sign-in or a database later, re-run this wizard."
 
-### C6 — Secrets handling (detect → block-and-prompt → ingest) — **P1**
+### C6 — Secrets handling (detect → block-and-prompt → ingest) — **~~P1 detect + block + ingest~~ / P2 server-only secret without a value**
 
 Three concerns separated:
 
@@ -123,36 +123,25 @@ Three concerns separated:
 2. **Hardcoded secrets in the source.** A common vibecoded mistake: `const STRIPE_KEY = "sk_live_..."`. These leak into git and into the deployed bundle.
 3. **Real secrets at runtime.** Server-only secrets go to Firebase Functions secrets (Google Cloud Secret Manager). Cloud Functions read them via `process.env.NAME`.
 
-The flow is the same pattern as D5 — **detect → block + generate prompt → user refactors → wizard re-detects → ingest**:
+**Detect → block → classify → ingest — landed 2026-05-13:**
 
-**Sub-step 1 — Detect** (`lib/inspector/detect-secrets-usage.mjs`):
-- Source scan for known prefixes: `sk_live_*` / `sk_test_*` (Stripe), `AKIA*` (AWS), `xoxb-*` (Slack), `ghp_*` / `gho_*` (GitHub PAT), `sk-ant-*` (Anthropic), `sk-...` 40+ chars (OpenAI), `AIza*` (Google — but Firebase API keys legitimately use these, so context-check).
-- Source scan for `process.env.*` references → list of expected env vars.
-- `.env.example` parsing (already exists in inspector).
-- Returns `{ hardcoded: [{file, line, prefix, redacted}], envRefs: [name], envExampleKeys: [name] }`.
+- `lib/inspector/detect-secrets-usage.mjs` does the source scan (pure JS, no LLM, no network). Pattern families: Stripe `sk_live_*`/`sk_test_*`, AWS `AKIA*` + `aws_secret_access_key=...`, GitHub `ghp_*`/`gho_*`/`ghu_*`, Anthropic `sk-ant-*`, OpenAI `sk-*` (40+ chars, excludes `sk-ant-`), Slack `xoxb-*`/`xoxp-*`, Google `AIza*` (always emitted with `kind: "google-api-key-maybe-firebase"` and `suppressed: true` when the surrounding context — filename or same-line `firebase` — looks like a legitimate Firebase Web SDK config). Bounded to 200 files × 50 KB, skips `node_modules`/`dist`/`build`/`out`/`.firebase`/`.git`. Returns `{ hardcoded: [{file, line, kind, prefix, redacted, excerpt, suppressed}], envRefs, envExampleKeys }`.
+- `inspect()` surfaces the result as `secrets` plus a derived `hasHardcodedSecrets` (count of non-suppressed hits).
+- `lib/refactor-prompts/template.mjs` gains `generateSecretsRefactorPrompt({ appName, framework, hardcoded, envRefs })`. Walks the user through (1) creating `.env`, (2) adding it to `.gitignore`, (3) replacing each inline literal with `process.env.X` (server) or `import.meta.env.VITE_X` / `process.env.NEXT_PUBLIC_X` (client) depending on framework, (4) re-running the wizard. Suppressed hits are excluded from the prompt body.
+- `POST /api/refactor-prompt/secrets` (`ui/server/api/refactor.mjs`) writes `REFACTOR-SECRETS.md` into the app folder.
+- New wizard steps:
+  - **HardcodedSecretsBlock** (step 10) — block page mirroring `IncompatibleApp.jsx`. Lists redacted hits, three choice cards (generate prompt / I've fixed it — re-check / cancel). Inline prompt preview + Copy button after generation.
+  - **SecretsClassify** (step 11) — per-key classification page. For every unique key (union of `envRefs` and `envExampleKeys`, deduped) the user picks browser-safe vs server-only and optionally types the value. Inferred default: VITE_*/NEXT_PUBLIC_* → browser-safe, everything else → server-only. Renders a warning when a Shape A/B app has any server-only classifications.
+- `stages/inject-secrets.sh` runs between provision and build. Browser-safe values are appended (idempotently) to `<app>/.env.production`. Server-only values with a value provided are piped into `firebase functions:secrets:set <NAME> --project <projectId>`; missing-value keys print a manual-setup hint and don't fail the stage. No-op when `plan.secrets` is null/empty.
+- Planner: `plan.secrets.perKey` carries the user's classification + value. `plan.functions.secrets` (the Cloud Functions runtime allow-list) is filtered to server-only keys only.
+- Negative-test fixture for the detector lives at [`samples/express-with-secret/`](../samples/express-with-secret/) (Stripe test key hardcoded in `functions/index.js`). The positive control is [`samples/express-real/`](../samples/express-real/) (zero secrets).
 
-**Sub-step 2 — Block + generate prompt** (only if hardcoded secrets found):
-- New wizard page: "We found hardcoded secrets in your code". Lists detected locations with prefix + redacted preview.
-- Generates `REFACTOR-SECRETS.md` in the app folder using a shared template helper (see D5):
-  - Detected hardcoded secrets
-  - Recommended `.env` structure with placeholders
-  - Refactor recipe: replace each inline value with `process.env.X`
-  - `.gitignore` entry for `.env`
-  - Re-run instruction
-- Buttons: `[Open REFACTOR-SECRETS.md]` `[Copy to clipboard]` `[Cancel]`.
-- User pastes into Claude Code or their AI tool, applies the refactor, re-runs `./deploy-app`. Wizard re-detects, finds no hardcoded secrets, proceeds.
+**Still open (P2):**
 
-**Sub-step 3 — Per-key classification + ingestion** (once secrets are in `.env`):
-- For each env var: "Is `STRIPE_KEY` something users should be able to read in their browser, or only your server?"
-- **Browser-safe** → wizard writes value to `.env.production` so Vite/Next bakes it into the build.
-- **Server-only** + Shape C → wizard runs `firebase functions:secrets:set NAME` with a masked input (never echoed, never persisted by us).
-- **Server-only** + Shape A/B → block: "This app has no backend, so server-only secrets have no safe home. Either treat as browser-safe (accept it's public), upgrade to Shape C, or cancel."
+- **Server-only key without a value provided in the wizard.** Today the inject-secrets stage prints a manual `firebase functions:secrets:set NAME` hint and continues. A dedicated UI prompt (masked input, never echoed, never persisted) would close the gap so the deploy is fully hands-off.
+- **Wizard-side detection of secrets that LIVE in `.env`/`.env.production` already.** The detector inspects source, not the env file itself; if a user puts a real Stripe key in `.env.production` (and that file is committed), we wouldn't flag it. A second pass over `.env*` looking for the same prefix families would catch the leak.
 
-**Placement in wizard:** new step between Questions (page 4) and Plan Summary (page 5). Plan needs to reflect which secrets are server-side so the deploy script can `firebase functions:secrets:set` them in advance.
-
-**Scope:** ~400 lines total. Inspector module ~80, secrets page + per-key UI ~120, block page + prompt generator ~150, backend endpoints ~60.
-
-**Shared template with D5:** the `REFACTOR-*.md` generation uses a common helper (`lib/refactor-prompts/template.mjs`) so the structure stays consistent across DB migration and secrets refactor prompts.
+**Shared template with D5:** `REFACTOR-FOR-FIREBASE.md` (D5) and `REFACTOR-SECRETS.md` (C6) both use the same generator structure (detected facts → why this matters → recipe → re-run note). One helper (`generateRefactorPrompt`), two domain-specific callers.
 
 ## D. Shape support
 
