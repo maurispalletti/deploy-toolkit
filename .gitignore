@@ -10,4 +10,6 @@ samples/**/.firebaserc
 samples/**/.firebase/
 samples/**/firestore.rules
 samples/**/package-lock.json
+samples/**/REFACTOR-FOR-FIREBASE.md
+samples/**/REFACTOR-SECRETS.md
 ui/dist/
