@@ -60,4 +60,30 @@ if [ "$NEEDS_DB" = "true" ] && [ ! -f firestore.rules ]; then
   echo "▸ Wrote default firestore.rules"
 fi
 
+# Pre-open the Firestore page on macOS so the user can create the actual
+# database while the rest of the deploy continues. Brand-new projects
+# need the user to pick a region + Production mode in the console once;
+# there's a Firebase CLI command for it
+# (`firebase firestore:databases:create`) but it requires picking the
+# region as a flag with no good default. Pre-opening keeps the choice
+# with the user, and the deploy stage's rules-deploy will still fail
+# loudly if the database isn't ready by then — the user can re-run.
+# REVISIT B6 captures the future fully-automated path.
+if [ "$NEEDS_DB" = "true" ] && [ "$(uname -s)" = "Darwin" ]; then
+  FIRESTORE_URL="https://console.firebase.google.com/project/$PROJECT_ID/firestore"
+  echo "▸ 📋 Your app needs a database. Opening Firebase Console so you can"
+  echo "    create it now while we keep working:"
+  echo "    $FIRESTORE_URL"
+  echo
+  echo "    What to click there:"
+  echo "      1. 'Create database'"
+  echo "      2. Pick any region (eur3 or us-central1 are fine)"
+  echo "      3. Start in 'Production mode' — we already wrote secure rules"
+  echo "      4. Wait ~30s for it to spin up"
+  echo
+  echo "    If you're not done by the time the deploy hits the database,"
+  echo "    we'll print a friendly retry message. The wizard waits for you."
+  open "$FIRESTORE_URL" >/dev/null 2>&1 || true
+fi
+
 echo "✓ Provisioning done"
