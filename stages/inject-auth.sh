@@ -236,4 +236,16 @@ else
   echo "▸ 'firebase' already in package.json; skipping install."
 fi
 
+# Pre-open the Firebase Console's Auth providers page on macOS so the user
+# can flip Google sign-in on while the rest of the deploy finishes. There
+# is no programmatic way to enable an auth provider (REVISIT A2); the
+# best we can do is get them to the right page before they need it.
+if [ "$(uname -s)" = "Darwin" ]; then
+  AUTH_URL="https://console.firebase.google.com/project/$PROJECT_ID/authentication/providers"
+  echo "▸ 📋 Opening Firebase Console so you can enable Google sign-in:"
+  echo "    $AUTH_URL"
+  echo "    (one-time per project; you can come back to it later if you prefer)"
+  open "$AUTH_URL" >/dev/null 2>&1 || true
+fi
+
 echo "✓ Auth wiring done"

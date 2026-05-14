@@ -17,7 +17,8 @@ The complete guide to deploying a small app to Firebase using this toolkit. Read
 7. [Costs](#7-costs)
 8. [What the toolkit does NOT do](#8-what-the-toolkit-does-not-do)
 9. [Troubleshooting](#9-troubleshooting)
-10. [Further reading](#10-further-reading)
+10. [First time on a brand-new project](#10-first-time-on-a-brand-new-project)
+11. [Further reading](#11-further-reading)
 
 ---
 
@@ -286,7 +287,48 @@ Re-open the wizard with `./deploy-app` and check the Welcome page — it shows t
 
 Run `nvm use 24` first. The default Node on most macOS setups is 18, which can't run the toolkit's test command (and may behave differently for builds).
 
-## 10. Further reading
+## 10. First time on a brand-new project
+
+When you deploy to a brand-new Firebase project, there are up to **three manual clicks** the toolkit can't automate. None take more than 30 seconds, but they matter — without them your deployed app won't do what you expect. The wizard surfaces them on the Done page as a checklist. This section is what you'd read if you wanted to know all of them up front.
+
+### Click 1 — Accept Firebase Terms of Service (first project ever)
+
+**When you need it:** the very first Firebase project you create on a Google account.
+
+**Why we can't automate it:** Google requires Firebase TOS to be accepted via the Firebase Console UI for an account before they let the API create new projects. Strictly an account-level consent flow.
+
+**What happens:** the wizard hits a `403 PERMISSION_DENIED` during provision and pauses on the **First-time setup** page. You click the button, create any throwaway project in the Firebase Console (you can delete it after), and come back. Once-per-account.
+
+### Click 2 — Turn on Google sign-in (only when your app uses sign-in)
+
+**When you need it:** every new Firebase project where you answered "yes" to the sign-in question.
+
+**Why we can't automate it:** Firebase has no CLI for auth provider settings. The underlying Identity Platform API exists but requires a Blaze upgrade, additional OAuth scopes, and OAuth-consent-screen configuration — Google deliberately gates this behind a manual click. See [REVISIT A2](REVISIT.md) for the gory details.
+
+**What happens:** the wizard's inject-auth stage **pre-opens the Firebase Console's sign-in providers page** in a new tab during deploy. You enable Google there (one click + pick a support email + Save). After deploy lands, the Done page shows it as the first item in your "what's left to do" checklist. Until you complete this, clicking "Sign in" in your deployed app fails with `auth/configuration-not-found`.
+
+### Click 3 — Initialize Firestore (sometimes — only on a brand-new project)
+
+**When you need it:** brand-new projects where you answered "yes" to the database question. Existing projects that already had Firestore set up don't need this.
+
+**Why we can't automate it:** enabling the Firestore API is automatic, but creating the actual database (picking a region + native vs Datastore mode) requires the user to make choices. The `firebase firestore:databases:create` CLI command does exist but isn't yet wired into the toolkit (tracked as [REVISIT B6](REVISIT.md), P1).
+
+**What happens today:** the deploy stage fails with `403, The caller does not have permission` when it tries to deploy Firestore rules to a non-existent database. The recovery is currently manual: open Firebase Console → Firestore → "Create database" → pick a region → Production mode. Then re-run `./deploy-app` and click "Deploy a fresh build" to retry the deploy stage. The Done page checklist links you directly to the right console page.
+
+### Why all three of these aren't fully automated
+
+Each comes down to either a missing API (sign-in providers) or a user-consent step (TOS acceptance, OAuth setup, database mode choice) that Google deliberately doesn't expose programmatically. We can automate everything *around* them — the wizard prepares the project, writes the config, scaffolds the code, even pre-opens the right tab — but the final click stays in the human's hands.
+
+### Cheat sheet
+
+```
+Brand-new project + no sign-in + no database  →  1 click  (Firebase TOS, first project only)
+Brand-new project +    sign-in + no database  →  2 clicks (+ enable Google)
+Brand-new project +    sign-in +    database  →  3 clicks (+ create Firestore database)
+Existing project, redeploys                   →  0 clicks
+```
+
+## 11. Further reading
 
 - **How every stage works internally:** [`HOW_IT_WORKS.md`](HOW_IT_WORKS.md)
 - **Backlog of design topics and follow-ups:** [`REVISIT.md`](REVISIT.md)
