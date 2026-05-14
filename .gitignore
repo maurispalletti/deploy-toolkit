@@ -12,4 +12,9 @@ samples/**/firestore.rules
 samples/**/package-lock.json
 samples/**/REFACTOR-FOR-FIREBASE.md
 samples/**/REFACTOR-SECRETS.md
+samples/**/REFACTOR-FOR-AUTH.md
+samples/**/.env.production
+samples/**/firebase-config.js
+samples/**/src/firebase-config.js
+samples/**/src/SignInWithGoogle.jsx
 ui/dist/
