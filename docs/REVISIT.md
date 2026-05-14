@@ -122,6 +122,24 @@ When `addFirebase` fails the GCP project is left dangling. A retry currently cre
 
 Firebase CLI opens its own OAuth tab. In the UI, we'll poll for completion (spec §6.3 `/api/login`). Verify the polling interval and timeout feel right under real network conditions, not just on a fast laptop.
 
+### B6 — Auto-initialize Firestore database for new projects — **P1**
+
+Hit during A1 smoke testing on 2026-05-14. When the plan includes `firestore: {...}`, the wizard writes `firestore.rules` and enables the Firestore API, but does NOT actually create the Firestore database itself. On a brand-new project, the deploy stage then fails with:
+
+> `Error: Request to https://firebaserules.googleapis.com/v1/projects/<id>:test had HTTP Error: 403, The caller does not have permission`
+
+(The 403 is the rules-test API saying "no database to test against".) Existing projects that already had Firestore initialized worked fine.
+
+Fix in `stages/provision.sh` (or a new `stages/init-firestore.sh` between provision and inject-secrets): when `plan.firestore !== null`, run:
+
+```bash
+firebase firestore:databases:create --location <region> --project <projectId>
+```
+
+Default location: same as `plan.functions.region` (`europe-west3`) when functions are in play, otherwise `eur3` (multi-region) or `us-central1`. Should be idempotent — if the database already exists, the command errors with "ALREADY_EXISTS"; treat that as success.
+
+Also: the user-facing recovery for this error should mirror Bootstrap / B5 / B4 — detect the 403-on-firebaserules in `run-stage.mjs`, surface a friendly page with a "Click here to create your Firestore database" button that opens `console.firebase.google.com/project/<id>/firestore`, plus an "I've done it — retry deploy" button.
+
 ### B5 — Detect "exceeded project quota" and surface a friendly page — **P1**
 
 Hit during A1 smoke testing on 2026-05-14. Google caps personal accounts at ~12 GCP projects; after enough deploys the next `firebase projects:create` fails with:
