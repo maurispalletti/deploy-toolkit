@@ -113,11 +113,16 @@ A folder of HTML/CSS/JS, or a Vite/Next/CRA/etc. app that builds to static files
 
 Same as Shape A, but your app talks directly to Firebase (Auth, Firestore, Storage) from the browser using the Firebase Web SDK.
 
-**Example:** *(no sample yet — see [`docs/prompts/build-shape-b-and-auth-scaffolding.md`](prompts/build-shape-b-and-auth-scaffolding.md) for the in-flight design)*
+**Example:** [`samples/vite-react-firestore-auth/`](../samples/vite-react-firestore-auth/) — Vite-React notes app whose `App.jsx` reads/writes notes from `/users/<uid>/notes` in Firestore. After the wizard runs in auto mode, the deployed URL shows a working Google sign-in button + a per-user notes list that persists across refresh.
 
 **What deploys:** Hosting + Auth provider config (if asked) + Firestore rules (if asked). Free within Spark quota.
 
-**Current limitation:** the toolkit configures the Firebase project for auth/Firestore but **does not yet inject `firebase-config.js` into your app code or scaffold a `<SignInWithGoogle />` component**. For now, you write that integration yourself. Tracked as REVISIT A1.
+**Sign-in scaffolding (Vite-React):** when you say "yes" to the sign-in question, the wizard offers two paths on the AuthScaffoldChoice page (see [§6](#6-when-the-wizard-blocks-you)):
+
+- **Add it for me (automatic)** — the wizard writes `src/firebase-config.js`, drops a `SignInWithGoogle.jsx` component, splices it into your `App.jsx`, and runs `npm install firebase`. After the deploy your URL has a working "Sign in with Google" button out of the box.
+- **Give me a prompt for my AI tool** — the wizard writes `src/firebase-config.js` and generates `REFACTOR-FOR-AUTH.md` you paste into Claude Code / Cursor. The AI adds the Sign-in button to your code; you re-run `./deploy-app` to redeploy.
+
+For Next.js and plain HTML, only the prompt path is supported in v1.x — REVISIT A1 follow-ups.
 
 ### Shape C — Frontend + backend (Cloud Functions)
 
@@ -180,6 +185,19 @@ You can also type the value here. Browser-safe values land in `<app>/.env.produc
 
 Inferred defaults: anything starting with `VITE_` or `NEXT_PUBLIC_` defaults to browser-safe; everything else defaults to server-only. Shape A/B apps (no backend) get an inline warning if you classify anything as server-only — there's no backend to read the secret from, so you'd need to either flip it to browser-safe (and accept it's public) or add a backend.
 
+### Choosing how sign-in is added to your code
+
+After Questions, if you said yes to "Do people need to sign in?", the wizard pauses on an **AuthScaffoldChoice** page (step 12). Pick one of two paths:
+
+1. **Add it for me (automatic)** — works best for Vite-React apps with a standard `src/App.jsx` shape. We write `src/firebase-config.js`, drop a `SignInWithGoogle.jsx` component, idempotently splice an import + `<SignInWithGoogle />` into your `App.jsx`, and run `npm install firebase`. If your `App.jsx` has an unusual shape (self-closing top element, no `return ( <jsx> )`, etc.) the splice helper bails gracefully and prints a "wire it manually" notice — your code is never corrupted.
+2. **Give me a prompt for my AI tool** — recommended for non-trivial entry points or non-Vite-React apps. We write `src/firebase-config.js` only, then route you to an **AuthRefactorPrompt** page (step 13) that generates `REFACTOR-FOR-AUTH.md` you paste into Claude Code, Cursor, or ChatGPT. The AI adds the Sign-in component to your code; you click "I've added sign-in — continue" to proceed to Plan Summary.
+
+### When sign-in scaffolding fails
+
+The auto path's most fragile step is the `App.jsx` splice. The helper is intentionally conservative — if it can't find a `return ( <jsx> )` block or the top-level element is self-closing, it bails with `{ ok: false, reason }` and prints a notice. Your `App.jsx` is left untouched; `firebase-config.js` and `SignInWithGoogle.jsx` are still in place, so you can add the import + render line manually, or re-run the wizard and pick the prompt path.
+
+The SDK-config fetch can also fail (Firebase project missing, CLI not logged in, etc.). When it does, the stage prints the cause + a console link and exits 0 — the rest of the deploy still runs.
+
 ## 7. Costs
 
 ### Firebase has two pricing tiers
@@ -213,8 +231,7 @@ For most vibecoded apps, the practical answer is: $0/month, but you need a credi
 
 Honest list of current limitations. Each is either tracked in [`REVISIT.md`](REVISIT.md) or in the [`docs/prompts/`](prompts/) directory as a brief for future work.
 
-- **It doesn't scaffold sign-in code into your app.** Answering "yes" to "Will users sign in?" enables the Google provider in Firebase but doesn't add a `<SignInWithGoogle />` component to your code. You wire that part yourself (or send the [Shape B prompt](prompts/build-shape-b-and-auth-scaffolding.md) to an AI tool). REVISIT A1.
-- **It doesn't inject `firebase-config.js` into your app yet.** Shape B apps need this file to talk to Firestore/Auth from the browser. You write it yourself for now using the keys from Firebase Console. REVISIT design pending.
+- **It doesn't auto-scaffold sign-in code for frameworks other than Vite-React.** Next.js and plain HTML apps that pick the auto path get `firebase-config.js` written but the component + splice are left as a manual step (with a clear notice). Use the prompt path instead — it handles those frameworks just fine. REVISIT A1 follow-ups (P2).
 - **It doesn't scaffold `functions/` for apps with Express at the root.** Today, Shape C requires you to already have the Firebase-conventional `functions/` layout. REVISIT D1 (P2).
 - **It doesn't push your code to GitHub.** Tracked as REVISIT C4 — a planned new step between Plan and Build that uses `gh repo create` to back up your app.
 - **It doesn't migrate your app's local DB to Firestore for you.** D5 detects incompatible DBs and gives you a refactor prompt; the migration itself is done by you (or your AI tool).

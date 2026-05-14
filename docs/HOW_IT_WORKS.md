@@ -14,6 +14,7 @@ Plain-English walkthrough of every step the script takes when you run `./deploy-
 | 2 | Brain | `lib/brain.mjs` | Inspect folder, interview, write config |
 | 3 | Provision | `stages/provision.sh` | Create Firebase project, write Firebase files |
 | 3.5 | Inject secrets | `stages/inject-secrets.sh` | Write `.env.production` + set Firebase Functions secrets |
+| 3.6 | Inject auth | `stages/inject-auth.sh` | Write `firebase-config.js` + (auto path) scaffold `SignInWithGoogle.jsx` |
 | 4 | Build | `stages/build.sh` | Run `npm install` + your build command |
 | 5 | Deploy | `stages/deploy.sh` | Run `firebase deploy --only ...` |
 | 6 | Report | `stages/report.sh` | Print the live URL |
@@ -168,6 +169,52 @@ Runs between provision and build. Reads `plan.secrets.perKey` from `deploy-app.c
 - **Server-only** + `plan.functions` non-null → pipes the value into `firebase functions:secrets:set NAME --project <projectId>`. The value is never echoed to stdout and never persisted by the toolkit beyond the saved config; it lives in Google Cloud Secret Manager from there. If a server-only key has no value yet (user skipped typing it on the Classify page), the stage prints a one-line manual-setup hint and continues instead of failing.
 
 The whole stage is a no-op when `plan.secrets` is null or empty, so it's safe to slot into the pipeline unconditionally — pre-C6 configs flow through untouched.
+
+## Stage 3.6 — Inject auth (`stages/inject-auth.sh`)
+
+Runs between inject-secrets and build. Reads `plan.auth` from
+`deploy-app.config.json` — populated by the wizard's AuthScaffoldChoice
+page when the user said "yes" to sign-in.
+
+- **`plan.auth === null`** — the user said no to sign-in. The stage
+  prints a one-line "skipping" and exits 0.
+- **`plan.auth.scaffoldMode === "auto"`** (the recommended path for
+  Vite-React apps) — the stage:
+  1. Calls `fetchWebSdkConfig(projectId)` from `lib/sdk-config.mjs`
+     to ask the Firebase CLI for the Web SDK config (apiKey,
+     authDomain, etc.). If the project has no Web App registered yet
+     it runs `firebase apps:create WEB <projectId>-web` first, then
+     retries.
+  2. Writes `<app>/src/firebase-config.js` (overwrites — content is
+     deterministic and we always want the latest values).
+  3. Copies `templates/auth/vite-react/SignInWithGoogle.jsx` to
+     `<app>/src/SignInWithGoogle.jsx` (only when missing — never
+     overwrites the user's edits to the component after the first
+     run).
+  4. Idempotently splices `import SignInWithGoogle from
+     "./SignInWithGoogle.jsx";` + `<SignInWithGoogle />` into
+     `<app>/src/App.jsx` via the regex-based helper at
+     `lib/inject-auth/splice-vite-react.mjs`. On any shape it can't
+     confidently match (self-closing top element, no `return (
+     <jsx> )`, missing App.jsx, etc.) the stage leaves the file
+     untouched and prints a manual-setup notice.
+  5. Runs `npm install firebase` in the app dir only when the
+     dep isn't already in `package.json`.
+- **`plan.auth.scaffoldMode === "prompt"`** — the user picked the
+  AI-tool path on AuthScaffoldChoice. The stage writes
+  `firebase-config.js` only and leaves the component + splice + dep
+  install to the user (the `REFACTOR-FOR-AUTH.md` written mid-wizard
+  told the AI exactly what to do).
+- **Unsupported framework** (anything other than `vite-react`) — the
+  stage writes `firebase-config.js` where it makes sense (Next.js →
+  `lib/firebase-config.js`; unknown → `src/firebase-config.js` or
+  app root) and prints a "manual component step required" notice.
+  Never fails the deploy.
+
+The stage is idempotent — re-running on the same app produces the
+same output. SDK-config errors (auth, missing project, etc.) surface
+as a console link + a "couldn't fetch SDK config" notice and exit 0
+so the rest of the deploy pipeline still runs.
 
 ## Stage 4 — Build (`stages/build.sh`)
 
