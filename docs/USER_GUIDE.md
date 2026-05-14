@@ -42,7 +42,7 @@ You need:
 Steps:
 
 ```bash
-cd /Users/mauriciospalletti/Documents/personal/deploy-toolkit
+cd /path/to/deploy-toolkit   # wherever you cloned this repo
 ./deploy-app
 ```
 
@@ -71,7 +71,7 @@ After a successful deploy, the tool writes `deploy-app.config.json` into your ap
 For developers who'd rather stay in the terminal:
 
 ```bash
-cd /Users/mauriciospalletti/Documents/personal/deploy-toolkit
+cd /path/to/deploy-toolkit
 ./deploy-app /path/to/your/app --cli
 ```
 
