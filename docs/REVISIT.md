@@ -202,6 +202,17 @@ Firebase Hosting keeps version history per site. A UI that surfaces past release
 
 Today preflight asks before installing Firebase CLI ("Install it now via npm install -g firebase-tools? [Y/n]"). Originally agreed to "instruct, don't install." We made it "ask, then install." A future version could auto-install silently for true one-command UX, with a `--no-install` opt-out. Trade-off: invasive vs. friction.
 
+### E6 — Redeploy button should re-run new-detection pages — **P2**
+
+The Done page's "Redeploy" button jumps straight to Progress, bypassing Inspector, Classify (C6), and the block pages (D5 / C6). For users who edit their app between deploys and add new env vars or new hardcoded secrets, the wizard silently skips the classification / block steps. The current model assumes "if the config exists, the user has already answered everything" — true at v1 but breaks down once the source can drift.
+
+Two possible fixes:
+
+1. **Re-run inspector on Redeploy** and only skip Classify / block if the new inspection matches what's already in the saved plan.
+2. **Add a "Review answers" button next to Redeploy** that takes the user back through Inspector + Classify + Questions, then Plan, then Deploy.
+
+(1) is more magical, (2) is more honest. Pick whichever feels right after seeing real usage.
+
 ### E4 — Chat interface for app description — **P3**
 
 The original meeting envisioned a chat UI where a non-technical user describes the app they want, Claude (or similar) generates a setup script, and the user pastes that into the terminal. Our v1 took a different turn (assume the app already exists). Worth revisiting if the toolkit gets used by anyone whose pain point is "I don't even have an app yet."
