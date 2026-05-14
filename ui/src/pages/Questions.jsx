@@ -43,7 +43,7 @@ export default function Questions({ inspection, defaults, onBack, onNext }) {
         <RadioRow name="auth" value={needsAuth} onChange={setNeedsAuth} options={yesNo} />
         <div className="help">
           {needsAuth === "yes"
-            ? <>Got it — we'll turn on Google sign-in for your Firebase project. <strong>Heads up:</strong> you'll need to add a sign-in button to your app's code yourself. We'll point you to a guide on the last screen.</>
+            ? <>Got it — we'll turn on Google sign-in for your Firebase project. On the next screen we'll ask whether you'd like us to add the Sign-in button to your code automatically, or generate a prompt you can paste into your AI tool.</>
             : "Pick this if anyone with the link should be able to use your app without logging in."}
         </div>
       </div>

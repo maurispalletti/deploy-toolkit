@@ -11,6 +11,8 @@ import Bootstrap from "./pages/Bootstrap.jsx";
 import IncompatibleApp from "./pages/IncompatibleApp.jsx";
 import HardcodedSecretsBlock from "./pages/HardcodedSecretsBlock.jsx";
 import SecretsClassify from "./pages/SecretsClassify.jsx";
+import AuthScaffoldChoice from "./pages/AuthScaffoldChoice.jsx";
+import AuthRefactorPrompt from "./pages/AuthRefactorPrompt.jsx";
 import { getAppDir } from "./api.js";
 
 // Wizard step ID map. The history of these numbers is sticky — earlier
@@ -28,6 +30,8 @@ import { getAppDir } from "./api.js";
 //   9 IncompatibleApp (D5 block)
 //  10 HardcodedSecretsBlock (C6 phase 1)
 //  11 SecretsClassify (C6 phase 2)
+//  12 AuthScaffoldChoice (A1 path picker — only shown when needsAuth)
+//  13 AuthRefactorPrompt (A1 prompt-path content — only shown when authChoice=prompt)
 
 // Routing helper: given an inspection result, pick the next step on the
 // happy path. Used after Inspector confirm AND after re-inspections from
@@ -102,7 +106,21 @@ export default function App() {
         // secrets) before the classify page, then Questions.
         setStep(nextStepFromInspection(i));
       }} />}
-      {step === 4 && <Questions inspection={inspection} defaults={answers} onBack={back} onNext={(a) => { setAnswers(a); next(); }} />}
+      {step === 4 && (
+        <Questions
+          inspection={inspection}
+          defaults={answers}
+          onBack={back}
+          onNext={(a) => {
+            setAnswers(a);
+            // A1: if the user said "yes" to sign-in, branch into the
+            // AuthScaffoldChoice page before Plan Summary. Otherwise
+            // continue straight to step 5.
+            if (a.needsAuth) setStep(12);
+            else next();
+          }}
+        />
+      )}
       {step === 5 && <PlanSummary appDir={appDir} answers={answers} secretsAnswers={secretsAnswers} onBack={back} onDeploy={(p) => { setPlan(p); next(); }} />}
       {step === 6 && <Progress appDir={appDir} onDone={next}
         onError={(err) => {
@@ -176,6 +194,28 @@ export default function App() {
             setSecretsAnswers(s);
             setStep(4);
           }}
+        />
+      )}
+      {step === 12 && (
+        <AuthScaffoldChoice
+          inspection={inspection}
+          onBack={() => setStep(4)}
+          onPick={(choice) => {
+            // Persist the choice into answers so the planner (called
+            // on the Plan Summary step) sees authChoice and renders
+            // plan.auth.scaffoldMode correctly.
+            setAnswers(prev => ({ ...(prev ?? {}), authChoice: choice }));
+            if (choice === "auto") setStep(5);
+            else setStep(13);
+          }}
+        />
+      )}
+      {step === 13 && (
+        <AuthRefactorPrompt
+          appDir={appDir}
+          inspection={inspection}
+          answers={answers}
+          onContinue={() => setStep(5)}
         />
       )}
     </div>

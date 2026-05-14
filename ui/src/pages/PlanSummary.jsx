@@ -45,6 +45,22 @@ export default function PlanSummary({ appDir, answers, secretsAnswers, onBack, o
       meta: <>{bits.join(" + ")}<div className="meta-hint">We'll put browser-safe values into <code className="codepath">.env.production</code> and server-only values into Firebase Functions secrets.</div></>
     });
   }
+  // A1: surface a "Wire up sign-in" step on the auto path. On the
+  // prompt path the user does the wiring themselves before re-running,
+  // so we leave it off the visual plan to avoid implying we'll touch
+  // their code in that flow.
+  if (plan.auth && plan.auth.scaffoldMode === "auto") {
+    items.push({
+      title: "Wire up sign-in",
+      meta: <>Add a "Sign in with Google" button to your app<div className="meta-hint">We'll write firebase-config.js into <code className="codepath">src/</code>, drop a SignInWithGoogle.jsx component, and splice it into your App.jsx.</div></>
+    });
+  } else if (plan.auth && plan.auth.scaffoldMode === "prompt") {
+    items.push({
+      title: "Drop in your Firebase config",
+      meta: <>Write <code className="codepath">firebase-config.js</code> into your source folder<div className="meta-hint">You'll wire the rest up yourself from REFACTOR-FOR-AUTH.md before re-running.</div></>
+    });
+  }
+
   if (plan.build.command) items.push({
     title: "Build your app",
     meta: <>Run <code className="codepath">{plan.build.command}</code><div className="meta-hint">Turn your source code into files browsers can use.</div></>
