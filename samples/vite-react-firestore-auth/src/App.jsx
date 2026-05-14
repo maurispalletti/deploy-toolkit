@@ -87,9 +87,9 @@ export default function App() {
     <main className="card">
       <h1>{APP_TITLE}</h1>
 
-      {/* The wizard's auto-inject path will insert <SignInWithGoogle />
-          right here. The prompt-path version expects you (or your AI
-          tool) to do the same. */}
+      {/* The wizard's auto-inject path will splice the Sign-in
+          component import + render here. The prompt-path version
+          expects you (or your AI tool) to do the same. */}
 
       {!user && <p className="hint">Please sign in to see your notes.</p>}
 
