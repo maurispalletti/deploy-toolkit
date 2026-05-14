@@ -132,9 +132,10 @@ The wizard currently shows this as a generic stage-failed error pointing the use
 
 - Explain the constraint in plain English ("Google limits you to ~12 projects per account").
 - Run `firebase projects:list --json` server-side, show the user's current projects in a checklist.
-- Offer a "Delete selected and retry" button that issues `firebase projects:delete <id> --force` for each checked project (with a clear "this is a 30-day soft-delete" disclaimer) then retries provision.
-- Alternative button: "Reuse one of these projects instead" — replaces `plan.firebase.projectId` with the chosen ID and re-runs from provision.
-- Link to https://support.google.com/code/contact/project_quota_increase for users who want to ask Google for more headroom.
+- Offer a "Delete selected and retry" button that uses `gcloud projects delete <id> --quiet` (NOT `firebase projects:delete`, which has no `--force` flag) for each checked project, then retries provision.
+- **Big footnote on the page:** soft-deleted projects still count against your quota for **30 days**. Deleting won't free the slot immediately. The page should make this very clear.
+- Alternative button: "Reuse one of these projects instead" — replaces `plan.firebase.projectId` with the chosen ID and re-runs from provision. Combined with `gcloud projects undelete <id>` for already-soft-deleted projects, this is the practical fast-fix.
+- Link to https://support.google.com/code/contact/project_quota_increase for users who want to ask Google for more headroom (usually approved within an hour for personal accounts).
 
 ### B4 — Mid-deploy Blaze upgrade prompt — **P1**
 
