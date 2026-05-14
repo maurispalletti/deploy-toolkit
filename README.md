@@ -34,8 +34,8 @@ If your app uses an incompatible local database (sqlite, postgres, mysql, mongod
 ## Quick start
 
 ```bash
-# Clone the toolkit
-git clone <repo-url> deploy-toolkit
+# Clone the toolkit (HTTPS — switch to SSH if you have an SSH key set up)
+git clone https://github.com/maurispalletti/deploy-toolkit.git
 cd deploy-toolkit
 
 # Run the wizard
@@ -47,6 +47,12 @@ That's it. The wizard handles Node version switching (via nvm), installs the Fir
 The terminal-only flow is `./deploy-app /path/to/app --cli` — same engine, no browser.
 
 For the complete walkthrough — every wizard page, every prompt, every error and its recovery — see **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)**.
+
+### Reporting bugs / suggesting features
+
+This repo's tracker: https://github.com/maurispalletti/deploy-toolkit/issues
+
+Before filing, check [docs/REVISIT.md](docs/REVISIT.md) — many friction points and "what about X?" topics are already documented there with priority tags and intended fixes.
 
 ## Status
 
