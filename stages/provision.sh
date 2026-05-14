@@ -10,10 +10,7 @@ TOOLKIT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 [ -f "$CONFIG" ] || { echo "✗ Missing $CONFIG"; exit 1; }
 
 PROJECT_ID=$(node -p "require('$CONFIG').firebase.projectId")
-SHAPE=$(node -p "require('$CONFIG').shape")
-PUBLIC_DIR=$(node -p "require('$CONFIG').hosting.publicDir")
 NEEDS_DB=$(node -p "require('$CONFIG').firestore !== null")
-NEEDS_FN=$(node -p "require('$CONFIG').functions !== null")
 
 cd "$APP_DIR"
 
