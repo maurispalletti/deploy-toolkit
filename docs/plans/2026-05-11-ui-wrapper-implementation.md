@@ -13,7 +13,7 @@
 - Native `node:test` for backend tests (matches existing pattern)
 - No frontend test framework in v1 — covered by the end-to-end smoke test
 
-**Source spec:** [`docs/superpowers/specs/2026-05-11-deploy-toolkit-ui-wrapper-design.md`](../../../../docs/superpowers/specs/2026-05-11-deploy-toolkit-ui-wrapper-design.md)
+**Source spec:** historical — captured in commit messages and `docs/REVISIT.md`. The spec was deliberately external during early design and is not part of this repository.
 
 **Working directory:** `/Users/mauriciospalletti/Documents/personal/deploy-toolkit/`
 

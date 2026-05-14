@@ -334,6 +334,4 @@ Existing project, redeploys                   →  0 clicks
 - **Backlog of design topics and follow-ups:** [`REVISIT.md`](REVISIT.md)
 - **Rolling back to a previous version:** [`ROLLBACK.md`](ROLLBACK.md)
 - **Hand-off prompts for external AI agents:** [`prompts/`](prompts/)
-- **Original v0.1 CLI spec:** [`../../../../docs/superpowers/specs/2026-04-15-deploy-small-apps-design.md`](../../../docs/superpowers/specs/2026-04-15-deploy-small-apps-design.md)
-- **UI wrapper spec:** [`../../../../docs/superpowers/specs/2026-05-11-deploy-toolkit-ui-wrapper-design.md`](../../../docs/superpowers/specs/2026-05-11-deploy-toolkit-ui-wrapper-design.md)
 - **UI implementation plan:** [`plans/2026-05-11-ui-wrapper-implementation.md`](plans/2026-05-11-ui-wrapper-implementation.md)

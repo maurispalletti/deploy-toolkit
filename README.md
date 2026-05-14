@@ -23,7 +23,7 @@ Power users can fall back to the terminal-only flow:
 | Version | What it is | Tag |
 |---|---|---|
 | **v0.1** | Terminal-only orchestrator. Verified end-to-end against the `samples/static-html` fixture on 2026-05-08. | `v0.1-cli` |
-| **v1.x** | Browser-based wizard UI on top of the same engine. CLI remains as `./deploy-app . --cli`. | *(planned — see `docs/superpowers/specs/`)* |
+| **v1.x** | Browser-based wizard UI on top of the same engine. CLI remains as `./deploy-app . --cli`. | *(in progress on `master`)* |
 
 ## Repository layout
 
@@ -50,8 +50,8 @@ npm test          # Node tests covering the brain (inspector / interview / plann
 
 ## Further reading
 
+- **Full user guide:** [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 - **How it works (every stage):** [docs/HOW_IT_WORKS.md](docs/HOW_IT_WORKS.md)
 - **Design backlog & open questions:** [docs/REVISIT.md](docs/REVISIT.md)
 - **Roll back to a previous version:** [docs/ROLLBACK.md](docs/ROLLBACK.md)
-- **Original spec (v0.1):** [../../docs/superpowers/specs/2026-04-15-deploy-small-apps-design.md](../../docs/superpowers/specs/2026-04-15-deploy-small-apps-design.md)
-- **Implementation plan (v0.1):** [../../docs/superpowers/plans/2026-05-07-deploy-app-script.md](../../docs/superpowers/plans/2026-05-07-deploy-app-script.md)
+- **Hand-off prompts for external AI agents:** [docs/prompts/](docs/prompts/)

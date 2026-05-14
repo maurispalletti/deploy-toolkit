@@ -282,5 +282,6 @@ The shape is chosen by the brain in stage 2: backend detection forces C; then th
 
 ## Further reading
 
-- Spec: `docs/superpowers/specs/2026-04-15-deploy-small-apps-design.md`
-- Implementation plan: `docs/superpowers/plans/2026-05-07-deploy-app-script.md`
+- [`USER_GUIDE.md`](USER_GUIDE.md) — usage-oriented guide aimed at people deploying their app for the first time.
+- [`REVISIT.md`](REVISIT.md) — backlog of open design topics and known gaps.
+- [`ROLLBACK.md`](ROLLBACK.md) — how to fall back to a previous toolkit version if a new release misbehaves.
