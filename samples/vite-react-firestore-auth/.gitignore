@@ -1,0 +1,21 @@
+node_modules/
+dist/
+.DS_Store
+*.log
+
+# deploy-toolkit generates these into src/ — keep them out of version
+# control so the wizard can regenerate deterministically.
+src/firebase-config.js
+src/SignInWithGoogle.jsx
+
+# Deploy-toolkit smoke-test artifacts (the repo-root .gitignore already
+# matches these via samples/** but we mirror them here so this folder
+# is reusable as a standalone sample).
+deploy-app.config.json
+firebase.json
+.firebaserc
+.firebase/
+firestore.rules
+package-lock.json
+REFACTOR-*.md
+.env.production
