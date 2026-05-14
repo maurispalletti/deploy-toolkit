@@ -122,6 +122,20 @@ When `addFirebase` fails the GCP project is left dangling. A retry currently cre
 
 Firebase CLI opens its own OAuth tab. In the UI, we'll poll for completion (spec §6.3 `/api/login`). Verify the polling interval and timeout feel right under real network conditions, not just on a fast laptop.
 
+### B5 — Detect "exceeded project quota" and surface a friendly page — **P1**
+
+Hit during A1 smoke testing on 2026-05-14. Google caps personal accounts at ~12 GCP projects; after enough deploys the next `firebase projects:create` fails with:
+
+> `The project cannot be created because you have exceeded your allotted project quota.`
+
+The wizard currently shows this as a generic stage-failed error pointing the user at `firebase-debug.log`. Pattern-detect this error in `stages/provision.sh` (or in the SSE `run-stage` handler) and surface a dedicated page like Bootstrap / IncompatibleApp:
+
+- Explain the constraint in plain English ("Google limits you to ~12 projects per account").
+- Run `firebase projects:list --json` server-side, show the user's current projects in a checklist.
+- Offer a "Delete selected and retry" button that issues `firebase projects:delete <id> --force` for each checked project (with a clear "this is a 30-day soft-delete" disclaimer) then retries provision.
+- Alternative button: "Reuse one of these projects instead" — replaces `plan.firebase.projectId` with the chosen ID and re-runs from provision.
+- Link to https://support.google.com/code/contact/project_quota_increase for users who want to ask Google for more headroom.
+
 ### B4 — Mid-deploy Blaze upgrade prompt — **P1**
 
 Plan Summary now warns upfront that Shape C needs Blaze, but it can only link to the general pricing page (per-project upgrade URL doesn't exist until provisioning runs). When the deploy stage fails with `Your project ... must be on the Blaze plan`, the wizard should detect that, surface a dedicated retry page with the now-resolvable upgrade URL (`https://console.firebase.google.com/project/<projectId>/usage/details`), and offer "I've upgraded — retry". Mirrors the bootstrap recovery pattern we built for the first-run 403. Without this, the user is stuck on a generic stage-failed error.
