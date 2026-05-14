@@ -7,6 +7,9 @@ import { runStage } from "../api.js";
 const STAGES = [
   { id: "provision", name: "Setting up your Firebase project" },
   { id: "inject-secrets", name: "Setting up your app's config values" },
+  // inject-auth is a no-op when plan.auth === null, so it's safe to run
+  // unconditionally — same pattern as inject-secrets.
+  { id: "inject-auth", name: "Wiring up sign-in" },
   { id: "build", name: "Building your app" },
   { id: "deploy", name: "Putting it on the internet" },
 ];

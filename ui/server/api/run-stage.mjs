@@ -7,6 +7,7 @@ const STAGES = {
   preflight: "stages/preflight.sh",
   provision: "stages/provision.sh",
   "inject-secrets": "stages/inject-secrets.sh",
+  "inject-auth": "stages/inject-auth.sh",
   build: "stages/build.sh",
   deploy: "stages/deploy.sh",
   report: "stages/report.sh",

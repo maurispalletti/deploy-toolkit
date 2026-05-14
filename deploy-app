@@ -56,6 +56,10 @@ if [ "$USE_CLI" = "true" ]; then
   # is empty, so this is safe to always run.
   bash "$TOOLKIT_DIR/stages/inject-secrets.sh" "$APP_DIR"
   echo
+  # inject-auth runs only when plan.auth !== null. It's a no-op for
+  # apps with no sign-in; safe to call unconditionally.
+  bash "$TOOLKIT_DIR/stages/inject-auth.sh" "$APP_DIR"
+  echo
   "$TOOLKIT_DIR/stages/build.sh" "$APP_DIR"
   echo
   "$TOOLKIT_DIR/stages/deploy.sh" "$APP_DIR"
