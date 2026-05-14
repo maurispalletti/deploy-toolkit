@@ -16,6 +16,11 @@
 //   writes: <appDir>/REFACTOR-SECRETS.md (for reference)
 //   returns: { path, content }
 //
+// POST /api/refactor-prompt/auth
+//   body: { appDir, projectId, framework, sdkConfig?, scaffoldedConfigPath? }
+//   writes: <appDir>/REFACTOR-FOR-AUTH.md (for reference)
+//   returns: { path, content }
+//
 // Both endpoints return the full markdown so the wizard can display it
 // inline for one-click copy/paste into the user's AI tool. Writing the
 // file is still useful for users who want to commit it or share it
@@ -25,7 +30,8 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import {
   generateDbRefactorPrompt,
-  generateSecretsRefactorPrompt
+  generateSecretsRefactorPrompt,
+  generateAuthRefactorPrompt
 } from "../../../lib/refactor-prompts/template.mjs";
 
 export async function writeDbRefactorPrompt(appDir, inspection) {
@@ -78,4 +84,42 @@ export function mountRefactor(app) {
       res.status(500).json({ error: err.message });
     }
   });
+
+  app.post("/api/refactor-prompt/auth", async (req, res) => {
+    try {
+      const { appDir, ...opts } = req.body ?? {};
+      const result = await writeAuthRefactorPrompt(appDir, opts);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+}
+
+
+// A1: writes REFACTOR-FOR-AUTH.md when the user picks the "give me a
+// prompt for my AI tool" path on the AuthScaffoldChoice page. Unlike
+// the DB and secrets endpoints, this one doesn't take an `inspection`
+// payload — instead the wizard hands us the framework + projectId so
+// the prompt can name the right paths without re-running the
+// inspector.
+export async function writeAuthRefactorPrompt(appDir, opts = {}) {
+  if (!appDir) throw new Error("appDir is required");
+  const {
+    appName = "your-app",
+    framework = "unknown",
+    projectId = "",
+    sdkConfig = null,
+    scaffoldedConfigPath = null
+  } = opts;
+  const md = generateAuthRefactorPrompt({
+    appName,
+    framework,
+    projectId,
+    sdkConfig,
+    scaffoldedConfigPath
+  });
+  const outPath = join(appDir, "REFACTOR-FOR-AUTH.md");
+  await writeFile(outPath, md);
+  return { path: outPath, content: md };
 }

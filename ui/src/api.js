@@ -72,6 +72,22 @@ export async function generateSecretsRefactorPrompt(appDir, inspection) {
   return r.json();
 }
 
+// Writes REFACTOR-FOR-AUTH.md into the app folder using the wizard's
+// known projectId + framework (and an optional SDK config). Returns
+// { path, content }. The AuthRefactorPrompt page calls this with the
+// minimum it knows about the app — there's no need to ship the full
+// inspection because the prompt's content is bounded by the auth
+// recipe, not by detected code.
+export async function generateAuthRefactorPrompt(appDir, payload = {}) {
+  const r = await fetch("/api/refactor-prompt/auth", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ appDir, ...payload }),
+  });
+  if (!r.ok) throw new Error(`refactor-prompt ${r.status}`);
+  return r.json();
+}
+
 // Runs a stage, calls onLog(line) per log line, returns { exitCode, error? }
 export function runStage(stage, appDir, { onLog, onError }) {
   return new Promise((resolve) => {
