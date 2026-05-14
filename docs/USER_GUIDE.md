@@ -1,8 +1,20 @@
-# deploy-toolkit User Guide
+# User Guide
 
-The complete guide to deploying a small app to Firebase using this toolkit. Read top-to-bottom or skim — sections are independent.
+The complete guide to deploying your app with this toolkit. Read top-to-bottom, or skip to whatever you need.
 
-> This is a living document. It reflects the current state of the toolkit. If something here disagrees with what the tool actually does, the tool is right and this doc is wrong — please open the gap as a REVISIT entry.
+> This is a living document. It reflects what the tool actually does. If anything in here disagrees with what you see on screen, the tool is right and this doc is wrong — please file an issue.
+
+---
+
+## What you'll end up with
+
+After ~2-5 minutes you'll have:
+
+- A **live URL** like `my-cool-app.web.app` that anyone can open from anywhere.
+- Your app on **Google's Firebase servers**, set up for free or near-free.
+- The ability to **redeploy in one click** when you change your code.
+
+You don't need to learn anything new about cloud platforms. You don't sign up for any new service besides the Google account you probably already have.
 
 ---
 
@@ -10,12 +22,12 @@ The complete guide to deploying a small app to Firebase using this toolkit. Read
 
 1. [What this tool does](#1-what-this-tool-does)
 2. [Quick start (UI wizard)](#2-quick-start-ui-wizard)
-3. [Quick start (CLI)](#3-quick-start-cli)
-4. [What gets created on Firebase](#4-what-gets-created-on-firebase)
-5. [App scenarios (shapes)](#5-app-scenarios-shapes)
-6. [When the wizard blocks you](#6-when-the-wizard-blocks-you)
-7. [Costs](#7-costs)
-8. [What the toolkit does NOT do](#8-what-the-toolkit-does-not-do)
+3. [Quick start (CLI for developers)](#3-quick-start-cli-for-developers)
+4. [What the tool creates for you behind the scenes](#4-what-the-tool-creates-for-you-behind-the-scenes)
+5. [Three kinds of app this works for](#5-three-kinds-of-app-this-works-for)
+6. [When the wizard pauses to ask you something](#6-when-the-wizard-pauses-to-ask-you-something)
+7. [Costs (will you ever pay?)](#7-costs-will-you-ever-pay)
+8. [What you'll still need to do yourself](#8-what-youll-still-need-to-do-yourself)
 9. [Troubleshooting](#9-troubleshooting)
 10. [First time on a brand-new project](#10-first-time-on-a-brand-new-project)
 11. [Further reading](#11-further-reading)
@@ -24,18 +36,15 @@ The complete guide to deploying a small app to Firebase using this toolkit. Read
 
 ## 1. What this tool does
 
-You point `deploy-toolkit` at a folder containing a small "vibecoded" app — typically a React, Next.js, Vite, plain HTML, or Express app — and it puts it on the internet using Firebase. No need to learn `gcloud`, no manual `firebase init`, no fighting with `firebase.json`.
+You point `deploy-toolkit` at a folder on your computer. The tool **checks your setup**, **looks at your app**, **asks you a few short questions**, and then **publishes your app to the internet** on Google's free Firebase service. The result is a sharable web address.
 
-The tool runs through six stages: **Preflight → Inspector → Interview → Plan → Provision → Build → Deploy → Report**. By default these happen inside a wizard UI in your browser. A power-user CLI mode is also available.
-
-The result is a live `https://<project>.web.app` URL you can share.
+By default everything happens in a browser tab the tool opens for you — you barely touch the terminal after the first command. There's a developer-only "CLI mode" that does the same thing entirely in the terminal.
 
 ## 2. Quick start (UI wizard)
 
 You need:
 
-- macOS (the folder picker uses macOS-native dialogs; Linux/Windows fall back to typing paths — see [§9](#9-troubleshooting))
-- Node 22+ (`nvm` strongly recommended; toolkit auto-switches)
+- macOS (the wizard's folder picker is macOS-only today — Linux/Windows can still use the developer CLI mode below)
 - A Google account
 - A few minutes
 
@@ -46,292 +55,288 @@ cd /path/to/deploy-toolkit   # wherever you cloned this repo
 ./deploy-app
 ```
 
-Your browser opens to the wizard. From here:
+A browser tab opens. From there:
 
 | Page | What you do |
 |---|---|
 | **Welcome** | Click **Pick folder**, choose your app folder from the macOS dialog, click **Get started**. |
-| **Preflight** | Wait for the three green checkmarks (Node, Firebase CLI, Logged in). If not logged in, click **Sign in** — your terminal will show firebase's progress and a browser tab opens for Google OAuth. Once you authenticate, the wizard auto-advances. |
-| **Inspector preview** | The tool shows what it thinks your app is (framework, build output, backend). Click **Yes, that's right** if it looks correct, **Back** if it doesn't. |
-| **Questions** | Three plain-language questions — app name, whether users sign in, whether the app needs to remember things. |
-| **Plan summary** | A bulleted list of every action the tool will take. Nothing has been created yet. If the plan includes Cloud Functions, you'll see a **Blaze plan warning** (see [§7](#7-costs)). Click **Deploy**. |
-| **Progress** | Three to four stages run in real time. Watch the live log if you want; otherwise just wait for the green ticks. |
-| **Done** | The live URL is displayed. Click it. Your app is on the internet. |
+| **Quick check** | Wait for three green checkmarks. If anything's red, the wizard tells you exactly how to fix it (usually one click). |
+| **What we found** | The tool shows what it thinks your app is. Click **Yes, that's right** if it looks correct. |
+| **A few questions** | Two or three plain-language questions — what to call your app, whether users sign in, whether your app saves things. |
+| **Here's what we'll do** | A bulleted preview of every step. Nothing has been created yet. Click **Deploy**. |
+| **Working on it** | Steps run in real time. Watch the checkmarks turn green. |
+| **🎉 Your app is live** | The web address appears. Click it. Done. |
 
-### First-time setup gotcha
+### First time? Two minor things may pop up
 
-If this is the very first Firebase project on your Google account, the wizard will hit a `403 PERMISSION_DENIED` error and pause on a **First-time setup** page. Click the button to open Firebase Console, create any throwaway project there (this accepts the Firebase TOS for your account), then click **I'm done — retry** in the wizard. You only do this once per Google account.
+- **Firebase asks to accept terms** — happens once per Google account, ever. 30 seconds, one click. The wizard handles it gracefully.
+- **Sign-in needs one click in the console** — if your app uses Google sign-in, the wizard pre-opens a tab where you turn it on. The Done-page checklist reminds you.
+
+Both are documented in detail in [§10](#10-first-time-on-a-brand-new-project).
 
 ### Re-running on the same app
 
-After a successful deploy, the tool writes `deploy-app.config.json` into your app folder. The next time you run `./deploy-app` and pick that folder, the wizard skips all the questions and jumps straight to the **Done** page. Click **Redeploy** to push fresh changes; click **Deploy another app** to start fresh on a different folder.
+After a successful deploy, run the same command again to update your app. The wizard remembers your previous answers and skips straight to the Done page — click **Deploy a fresh build** to push your new code.
 
-## 3. Quick start (CLI)
-
-For developers who'd rather stay in the terminal:
+## 3. Quick start (CLI for developers)
 
 ```bash
 cd /path/to/deploy-toolkit
 ./deploy-app /path/to/your/app --cli
 ```
 
-You answer the same three questions at the terminal prompt. Same stages, same output. Errors are surfaced as text rather than as pages.
+You answer the same questions at the terminal prompt. Same stages, same output. Error messages are plainer than in the wizard (no recovery pages — you read the error and act).
 
-CLI mode does **not** get the same error recovery UX as the wizard — for example, the first-run `403` shows the raw Firebase debug log rather than a friendly recovery page. Tracked as a follow-up in [`REVISIT.md`](REVISIT.md) entry B1.
+## 4. What the tool creates for you behind the scenes
 
-## 4. What gets created on Firebase
+You don't need to understand these to use the tool — but if you're curious:
 
-A successful deploy creates:
+The tool sets up a **workspace for your app on Google's servers** (a "Firebase project"), then publishes your code to it. Depending on your answers:
 
-| Resource | Always? | What it is |
+- **Always**: a public website at `your-app-name.web.app`.
+- **If you said yes to "save data"**: an online database, locked down so only signed-in users can read or write their own data.
+- **If you said yes to "users sign in"**: Google sign-in is enabled for your project, and (for Vite-React apps) the tool can write the sign-in code into your app for you.
+- **If your app has server-side code (Cloud Functions)**: that gets deployed too, reachable at `/api/*` paths.
+
+Everything lives in the Firebase Console at `https://console.firebase.google.com` where you can see, manage, or delete it.
+
+<details>
+<summary>The exact list of resources created (for developers)</summary>
+
+| Resource | When | What it is |
 |---|---|---|
-| GCP project | Yes | The underlying Google Cloud Platform project. Firebase is a layer on top. |
-| Firebase project | Yes | Activated on the GCP project — same ID, with Firebase services available. |
-| Firebase Hosting site | Yes | Serves your static files at `https://<project>.web.app`. |
-| `firebase.json` in your app folder | Yes | Describes what to deploy. Generated by the tool. |
-| `.firebaserc` in your app folder | Yes | Pins your folder to the Firebase project. |
-| `firestore.rules` in your app folder | Only if you answered "yes" to the database question | Default secure rules — only authenticated users can read/write their own data. |
-| Cloud Functions deployment | Only if you have a `functions/` directory with `firebase-functions` as a dep | Serverless Node.js functions, reachable at `/api/*` by default. |
-| Firebase Authentication provider config | Only if you answered "yes" to sign-in | Google provider is enabled but **your app code must wire it up** — see [§8](#8-what-the-toolkit-does-not-do). |
+| GCP project | Always | The underlying Google Cloud project. Firebase is a layer on top. |
+| Firebase project | Always | Activated on the GCP project, same ID. |
+| Firebase Hosting site | Always | Serves your static files at `https://<id>.web.app`. |
+| `firebase.json` in your app folder | Always | Generated config describing the deploy. |
+| `.firebaserc` | Always | Pins your folder to the Firebase project. |
+| `firestore.rules` | Only if needed | Locked-down default — authenticated users can read/write only their own data under `/users/<uid>/`. |
+| Cloud Functions deployment | Only when your folder has a `functions/` directory with `firebase-functions` as a dep | Reachable at `/api/*` via hosting rewrites. |
+| Auth Google provider | Only if needed | Enabled in the project. You still flip it on in the console once. |
 
-Everything created is visible at `https://console.firebase.google.com/project/<your-project-id>`.
+</details>
 
-## 5. App scenarios (shapes)
+## 5. Three kinds of app this works for
 
-The tool recognizes three architectures.
+### 1. Just a website (no server, no database)
 
-### Shape A — Static frontend only
+A folder of HTML/CSS/JS, or a React/Vue/Svelte/Next.js project that builds to static files. **Free forever**, no credit card needed.
 
-A folder of HTML/CSS/JS, or a Vite/Next/CRA/etc. app that builds to static files. No server.
+**Example apps:** a calculator, a portfolio, a static dashboard, a landing page, a side-scrolling browser game.
 
-**Example:** [`samples/static-html/`](../samples/static-html/) (plain HTML) or [`samples/vite-react-real/`](../samples/vite-react-real/) (Vite + React with a build step).
+In this repo: [`samples/static-html/`](../samples/static-html/) and [`samples/vite-react-real/`](../samples/vite-react-real/).
 
-**What deploys:** Hosting only. Free forever within the Spark plan quota.
+### 2. Website + your own data (and optionally sign-in)
 
-**Inspector signals:** `framework` is `none`, `vite-react`, `cra`, or `nextjs`. `hasBackend: false`. `outputDir` is the conventional build dir (`dist`, `build`, `out`) or `.` for plain HTML.
+Same as above, but your app talks directly to a database (Firestore) and/or asks users to sign in with Google. **Free for personal-scale traffic** — no credit card.
 
-### Shape B — Static frontend + Firebase services
+**Example apps:** a notes app, a habit tracker, a tiny multi-user todo list, a friends-only photo wall.
 
-Same as Shape A, but your app talks directly to Firebase (Auth, Firestore, Storage) from the browser using the Firebase Web SDK.
+In this repo: [`samples/vite-react-firestore-auth/`](../samples/vite-react-firestore-auth/) — a working notes app with sign-in.
 
-**Example:** [`samples/vite-react-firestore-auth/`](../samples/vite-react-firestore-auth/) — Vite-React notes app whose `App.jsx` reads/writes notes from `/users/<uid>/notes` in Firestore. After the wizard runs in auto mode, the deployed URL shows a working Google sign-in button + a per-user notes list that persists across refresh.
+For Vite-React, the wizard can **add the Sign-in button to your code for you** automatically. For other frameworks (Next.js, plain HTML), the wizard generates a step-by-step prompt you can paste into Claude Code or another AI tool to add the code itself.
 
-**What deploys:** Hosting + Auth provider config (if asked) + Firestore rules (if asked). Free within Spark quota.
+### 3. Website + custom server code
 
-**Sign-in scaffolding (Vite-React):** when you say "yes" to the sign-in question, the wizard offers two paths on the AuthScaffoldChoice page (see [§6](#6-when-the-wizard-blocks-you)):
+Your app has a Node.js server piece (usually Express) that does work the browser can't — calling third-party APIs with secret keys, processing files, that kind of thing. **Google requires a credit card** for this (Firebase's Blaze plan), but the actual bill stays at $0/month for almost all personal apps.
 
-- **Add it for me (automatic)** — the wizard writes `src/firebase-config.js`, drops a `SignInWithGoogle.jsx` component, splices it into your `App.jsx`, and runs `npm install firebase`. After the deploy your URL has a working "Sign in with Google" button out of the box.
-- **Give me a prompt for my AI tool** — the wizard writes `src/firebase-config.js` and generates `REFACTOR-FOR-AUTH.md` you paste into Claude Code / Cursor. The AI adds the Sign-in button to your code; you re-run `./deploy-app` to redeploy.
+**Example apps:** anything that calls Stripe, anything that uses an OpenAI / Anthropic API key, anything with backend logic users shouldn't see.
 
-For Next.js and plain HTML, only the prompt path is supported in v1.x — REVISIT A1 follow-ups.
+In this repo: [`samples/express-real/`](../samples/express-real/) — Express function + static frontend.
 
-### Shape C — Frontend + backend (Cloud Functions)
+<details>
+<summary>How the tool decides which kind your app is</summary>
 
-A folder with both a static frontend (in `public/`) and a `functions/` directory containing a Node.js Cloud Function (usually an Express app wrapped as `onRequest`).
+The tool looks at your `package.json` and source files to figure out the framework (Vite, Next.js, CRA, plain HTML, Express, etc.) and whether you have a `functions/` directory with `firebase-functions` listed as a dependency. It also detects if your code uses a database that Firebase can't run (sqlite, postgres, mysql, mongodb) — see [§6](#6-when-the-wizard-pauses-to-ask-you-something).
 
-**Example:** [`samples/express-real/`](../samples/express-real/).
+</details>
 
-**What deploys:** Hosting + Functions. The function is reachable at `/api/*` (rewrites in `firebase.json` route to it).
+## 6. When the wizard pauses to ask you something
 
-**Cost requirement:** Cloud Functions require Firebase's Blaze plan. See [§7](#7-costs).
+The wizard tries to catch problems **before** they cause a failed deploy. When it does, it stops, explains what's going on in plain English, and gives you concrete options.
 
-**Inspector signals:** the toolkit recognizes Shape C when your folder contains `functions/package.json` declaring `firebase-functions` as a dep. Apps that have `express` at the root but no `functions/` directory are detected as Shape C in principle but cannot be deployed without scaffolding a `functions/` directory — tracked as REVISIT D1 (P2).
+### "Wrong Google account"
 
-## 6. When the wizard blocks you
+You're signed into Firebase as someone else (e.g. your work account when you wanted your personal one). The Quick-check page shows the wrong email. Click **Switch account** and pick the right one.
 
-The wizard tries to detect deal-breakers **before** burning your time on a failing deploy. When it does, it stops and gives you concrete options.
+### "First time using Firebase on this Google account"
 
-### Wrong Firebase account
+Google requires you to accept Firebase's terms once per account, and they only let you do it through their console (not via this tool). The wizard pauses on a friendly page with a button that takes you to the right place. You make any throwaway project there, accept terms, come back, click "I'm done", continue. Takes 30 seconds, only ever happens once.
 
-The Preflight page shows a red ✗ on **Logged in to Firebase** with the wrong email (e.g. a work account when you wanted personal, or vice versa). Click **Switch account** to log out and re-authenticate.
+### "Your app needs a database we haven't set up yet"
 
-### First-time Firebase TOS
+Brand-new Firebase projects need you to create the actual database once (pick a region + click "Production mode"). The wizard pre-opens the right page during setup so you can do it while it works on other things. If the deploy hits this before you've finished, you get a clear retry message — finish creating the database, run the tool again, it picks up where it left off.
 
-`403 PERMISSION_DENIED` on `addFirebase`. The wizard surfaces a dedicated **First-time setup** page with a button to open Firebase Console, where you create any throwaway project (which implicitly accepts the TOS for your account). Click **I've finished — retry** when done.
+### "Your app uses a database Firebase can't run"
 
-### Shape C without Blaze
+If your code uses sqlite, postgres, mysql, or MongoDB locally, Firebase can't run that. The wizard detects this and pauses with three big choice cards:
 
-Shape C needs Cloud Functions which need the Blaze plan. The Plan Summary page shows a yellow banner upfront warning you. After provisioning, if the project isn't on Blaze, the deploy will fail with `must be on the Blaze plan to complete this command` — click the upgrade URL in the error, add billing, then re-run the wizard (idempotency kicks in).
+- **🪄 Get help moving to a Firebase database** — generates a structured prompt you copy and paste into Claude Code, Cursor, or another AI tool. The AI does the refactor. You re-run the wizard.
+- **Skip the server part for now** — just deploy the website, the data-saving parts won't work yet.
+- **Cancel** — exit, think about it.
 
-### Incompatible local database
+The prompt content shows up right there in the wizard for one-click copy — no need to find files.
 
-If your app uses sqlite, pg, mysql, mongodb, prisma, or writes to local files (`fs.writeFileSync`/`appendFileSync` to non-`/tmp` paths), Firebase can't run it as-is. Cloud Functions have an ephemeral filesystem; there's no persistent local DB.
+### "We found secrets hardcoded in your code"
 
-The inspector flags this automatically — see [`samples/express-sqlite/`](../samples/express-sqlite/) for a worked example (Express + `better-sqlite3` in `functions/`). When detected, the wizard pauses on an **Incompatible app** page with three options:
+If you have something like `const STRIPE_KEY = "sk_live_..."` typed directly into your code, the wizard catches it and stops you. Hardcoded secrets end up in your public app bundle — anyone with the URL could read them. The wizard shows what it found (just the first few characters of the key, not the whole thing) and offers:
 
-1. **🪄 Generate refactor prompt** — writes `REFACTOR-FOR-FIREBASE.md` into your app folder. The markdown lists every detected call site (file:line + 1-line excerpt), explains why Cloud Functions can't run the driver, and walks through a Firestore migration using the storage-adapter pattern (mirroring the stock-monitor 2026-05-08 migration referenced in REVISIT D5). The page also shows a "Copy path" helper and an **I've refactored — retry** button that re-runs the inspector. Workflow: paste the file into Claude Code (or any AI tool), apply the refactor, click retry — the wizard either continues or re-blocks with fresh evidence.
-2. **Deploy frontend only** — skip the backend in the plan. The deployed app's UI will work but anything that calls `/api/*` will fail.
-3. **Cancel** — exit cleanly. Make a decision and come back.
+- **🪄 Get help moving secrets to a safe place** — generates an AI prompt that walks the AI through moving keys into a `.env` file and reading them via environment variables.
+- **I've already moved them** — re-checks your code.
+- **Stop and decide later** — exits.
 
-### Hardcoded secrets
+### "Are these config values safe to share?"
 
-If your source contains literal API keys (Stripe `sk_live_*` / `sk_test_*`, AWS `AKIA*`, GitHub `ghp_*`, Anthropic `sk-ant-*`, OpenAI `sk-*`, Slack `xoxb-*`/`xoxp-*`, Google `AIza*`), the wizard will pause on a **Hardcoded secrets** page (step 10) before the questions. It shows every detected leak with a redacted preview (e.g. `sk_live_AbCd…XyZ9` — never the raw value) and offers three options:
+If your app reads from environment variables, the wizard asks for each one: is this safe for users to see, or does it need to stay server-only? The tool picks sensible defaults (anything starting with `VITE_` or `NEXT_PUBLIC_` is treated as safe by default).
 
-1. **🪄 Get help moving them to a safe place** — writes `REFACTOR-SECRETS.md` into your app folder. The markdown lists every leak, explains why hardcoded keys end up in your public bundle and in git, and walks through moving them into `.env` (server) / `import.meta.env.VITE_*` (Vite client) / `process.env.NEXT_PUBLIC_*` (Next.js client). The page also shows the prompt inline with a Copy button so you can paste it into Claude Code or another AI tool. Once your AI fixes the code, click **I've moved the keys — try again** and the wizard re-scans.
-2. **I've already moved them — re-check** — runs the inspector again. If anything's still hardcoded, the page re-renders with the new evidence; otherwise the wizard continues.
-3. **Stop and decide later** — exits cleanly.
+### "How do you want sign-in added to your code?"
 
-Negative-test fixture: [`samples/express-with-secret/`](../samples/express-with-secret/) (Stripe test key hardcoded in `functions/index.js`).
+If you said yes to sign-in, the wizard offers two paths:
 
-Google API keys (`AIza*`) that appear in a clearly Firebase-flavored context (a file named `firebase-config.js`, or a line with the word `firebase`) don't block the wizard — Firebase Web SDK keys legitimately start with `AIza` and are public by design. You may still see them flagged as "might be Firebase — please verify" in the evidence list so you can double-check.
+- **Add it for me (automatic)** — recommended if your app is Vite-React with a standard structure. The wizard writes the code and wires it up.
+- **Give me a prompt for my AI tool** — recommended for other frameworks or complicated apps. The wizard generates a copy-pasteable prompt.
 
-### Classifying your config values
+### "Your app needs Firebase's pay-as-you-go plan"
 
-After clearing any hardcoded secrets — OR straight after the inspector if you didn't have any — the wizard shows a **Classify config values** page (step 11) when your app references any environment variables (`process.env.X` calls in source AND/OR keys in `.env.example`). For each unique key, you pick:
+If your app has server code, Firebase requires you to be on their Blaze plan (credit card on file). The Plan-summary page warns you about this upfront, and links to Firebase's pricing page. Your credit card won't actually be charged for typical personal-scale traffic — see [§7](#7-costs-will-you-ever-pay).
 
-- **Browser-safe** — the value will be baked into the built JavaScript. Pick this for things like app titles, public URLs, public Firebase Web SDK keys, etc.
-- **Server-only** — the value will be stored as a Firebase Functions secret (Google Cloud Secret Manager). Pick this for real secrets: Stripe live keys, OpenAI API keys, etc.
+## 7. Costs (will you ever pay?)
 
-You can also type the value here. Browser-safe values land in `<app>/.env.production` so Vite/Next bake them into the build. Server-only values are piped into `firebase functions:secrets:set` at deploy time. If you leave a server-only value blank, the wizard prints a one-line manual-setup hint at deploy time rather than failing — you can run `firebase functions:secrets:set NAME --project <projectId>` yourself when you're ready.
-
-Inferred defaults: anything starting with `VITE_` or `NEXT_PUBLIC_` defaults to browser-safe; everything else defaults to server-only. Shape A/B apps (no backend) get an inline warning if you classify anything as server-only — there's no backend to read the secret from, so you'd need to either flip it to browser-safe (and accept it's public) or add a backend.
-
-### Choosing how sign-in is added to your code
-
-After Questions, if you said yes to "Do people need to sign in?", the wizard pauses on an **AuthScaffoldChoice** page (step 12). Pick one of two paths:
-
-1. **Add it for me (automatic)** — works best for Vite-React apps with a standard `src/App.jsx` shape. We write `src/firebase-config.js`, drop a `SignInWithGoogle.jsx` component, idempotently splice an import + `<SignInWithGoogle />` into your `App.jsx`, and run `npm install firebase`. If your `App.jsx` has an unusual shape (self-closing top element, no `return ( <jsx> )`, etc.) the splice helper bails gracefully and prints a "wire it manually" notice — your code is never corrupted.
-2. **Give me a prompt for my AI tool** — recommended for non-trivial entry points or non-Vite-React apps. We write `src/firebase-config.js` only, then route you to an **AuthRefactorPrompt** page (step 13) that generates `REFACTOR-FOR-AUTH.md` you paste into Claude Code, Cursor, or ChatGPT. The AI adds the Sign-in component to your code; you click "I've added sign-in — continue" to proceed to Plan Summary.
-
-### When sign-in scaffolding fails
-
-The auto path's most fragile step is the `App.jsx` splice. The helper is intentionally conservative — if it can't find a `return ( <jsx> )` block or the top-level element is self-closing, it bails with `{ ok: false, reason }` and prints a notice. Your `App.jsx` is left untouched; `firebase-config.js` and `SignInWithGoogle.jsx` are still in place, so you can add the import + render line manually, or re-run the wizard and pick the prompt path.
-
-The SDK-config fetch can also fail (Firebase project missing, CLI not logged in, etc.). When it does, the stage prints the cause + a console link and exits 0 — the rest of the deploy still runs.
-
-## 7. Costs
+**Short answer: for ~99% of personal projects, no.** Even when you're on the pay-as-you-go plan, the free monthly quotas are generous enough that small apps cost $0/month in practice. The credit card requirement is Google being cautious, not them planning to bill you.
 
 ### Firebase has two pricing tiers
 
-| Plan | Cost | What's included | Required for |
+| Plan | Cost | What it includes | When you'd be on it |
 |---|---|---|---|
-| **Spark** | Free forever | Hosting, Firestore, Auth, Storage — within monthly free quotas. No credit card required. | Shape A, Shape B. |
-| **Blaze** | Pay-as-you-go | Everything in Spark + Cloud Functions, App Hosting, Data Connect, more. **Same free quotas as Spark; you pay only past them.** Credit card required. | Shape C, anything with Cloud Functions. |
+| **Spark** | Free, no credit card | Hosting, database (Firestore), sign-in, file storage — within monthly free quotas. | Apps without server code (the first two kinds in §5). |
+| **Blaze** | Pay-as-you-go | Everything above + Cloud Functions, advanced features. **Same free quotas as Spark; you only pay past them.** Credit card required. | Apps with custom server code (the third kind in §5). |
 
-### What a small app actually costs
+### What the free quotas look like
 
-For a personal project or hackathon on Blaze, expect **$0.00/month** in practice. Firebase's free quotas inside Blaze are generous:
+On Blaze you can do all of this every month before owing anything:
 
-- 2M Cloud Function invocations / month
-- 400K GB-seconds / month
-- 10GB egress / month
-- 1GB Firestore storage, 50K reads/day, 20K writes/day
-- 10GB Hosting storage + 360MB/day bandwidth
+- 2 million Cloud Function calls
+- 1 GB Firestore storage, 50,000 reads/day, 20,000 writes/day
+- 10 GB hosting bandwidth/day
 
-The credit-card requirement is for safety, not actual billing. Set a budget alert in Google Cloud Console if you want extra peace of mind.
+For a personal app shared with friends, you'd need to do something accidentally weird (like a bug causing an infinite loop) to ever blow past these.
 
-### When you'd actually pay
+### When you actually pay
 
-- Your app gets unexpectedly popular and blows past the free quota.
-- A bug causes a Cloud Function to loop and burn invocations.
-- You enable an extension or feature that doesn't have a free tier.
+- Your app gets unexpectedly popular and crosses the free thresholds.
+- A bug causes your server code to call itself in a loop and burn invocations.
 
-For most vibecoded apps, the practical answer is: $0/month, but you need a credit card on file to deploy Shape C.
+If you're worried, set a budget alert in Google Cloud Console — Google will email you when you cross any dollar threshold.
 
-## 8. What the toolkit does NOT do
+## 8. What you'll still need to do yourself
 
-Honest list of current limitations. Each is either tracked in [`REVISIT.md`](REVISIT.md) or in the [`docs/prompts/`](prompts/) directory as a brief for future work.
+The tool automates almost everything but leaves a few things in your hands. Each of these is on the roadmap; see [`REVISIT.md`](REVISIT.md) for the tracking.
 
-- **It doesn't auto-scaffold sign-in code for frameworks other than Vite-React.** Next.js and plain HTML apps that pick the auto path get `firebase-config.js` written but the component + splice are left as a manual step (with a clear notice). Use the prompt path instead — it handles those frameworks just fine. REVISIT A1 follow-ups (P2).
-- **It doesn't scaffold `functions/` for apps with Express at the root.** Today, Shape C requires you to already have the Firebase-conventional `functions/` layout. REVISIT D1 (P2).
-- **It doesn't push your code to GitHub.** Tracked as REVISIT C4 — a planned new step between Plan and Build that uses `gh repo create` to back up your app.
-- **It doesn't migrate your app's local DB to Firestore for you.** D5 detects incompatible DBs and gives you a refactor prompt; the migration itself is done by you (or your AI tool).
-- **It doesn't move hardcoded secrets out of your code for you.** C6 detects them and writes a refactor prompt for your AI tool; the actual edits are done by you (or your AI). What it *does* do once your code is clean is the per-key classify + ingest step (`.env.production` and Firebase Functions secrets).
-- **It doesn't prompt for a server-only secret value mid-deploy** when you skipped typing it on the Classify page. The inject-secrets stage prints a one-line manual setup hint and continues; you'll need to run `firebase functions:secrets:set NAME --project <projectId>` yourself. REVISIT C6 (P2 follow-up).
-- **It doesn't support non-macOS folder pickers natively.** Linux/Windows users currently have to pass the path on the command line. REVISIT design pending.
-- **It doesn't support custom Firebase regions per app.** Functions are hardcoded to `europe-west3`. REVISIT D4 (P3).
-- **It doesn't have a "manage your deployed apps" view.** Each run treats the wizard like a one-shot. REVISIT E1/E2.
+- **Click "Enable Google sign-in" in the Firebase Console** once per project if your app uses sign-in. The tool pre-opens the right page for you.
+- **Click "Create database"** once per project if your app uses Firestore on a brand-new project. The tool pre-opens this too.
+- **Write your app's data-saving code if it doesn't use Firestore yet.** The tool generates a clear "to-do list" you paste into Claude Code or another AI tool to do the migration.
+- **Move hardcoded secrets out of your code.** Same approach — the tool generates an AI prompt to help.
+
+That's it. Everything else (creating cloud projects, picking a region, configuring hosting, wiring up the database rules, scaffolding sign-in code for Vite-React) the tool does for you.
 
 ## 9. Troubleshooting
 
-### "Cannot find module 'samples/...'"
+### Sign-in doesn't work after deploy
 
-You ran `./deploy-app samples/foo` from outside the toolkit folder. Either `cd` into the toolkit first, or pass an absolute path.
+Most common cause: you haven't enabled Google sign-in in the Firebase Console yet. Open your deployed app's Done page, click **"Open sign-in settings"** in the checklist, toggle Google on, save. Refresh your app — sign-in should work.
 
-### "Permission denied" on `./deploy-app`
+### "Missing or insufficient permissions" when saving data
 
-The script lost its executable bit. Run `chmod +x deploy-app` from the toolkit directory.
+The default database rules only allow users to save data under their own user ID. If your app tries to save somewhere else, you'll see this error in the browser console. Fix: edit your app code to save under `/users/<your-user-id>/...`, or edit the `firestore.rules` file in your app folder to allow what you need, then redeploy.
+
+### "Your project must be on the Blaze plan"
+
+Click the upgrade URL in the error, add a billing account on Firebase, then re-run the tool. It'll pick up where it left off. (Note: this only happens for apps with server code.)
+
+### "Failed to add Firebase to Google Cloud Platform project"
+
+First-time-on-this-Google-account issue. Follow the wizard's recovery page — create any throwaway project in Firebase Console first, then retry. See [§10](#10-first-time-on-a-brand-new-project).
+
+### "The project cannot be created because you have exceeded your allotted project quota"
+
+Google caps personal accounts at ~12 projects (including soft-deleted ones for 30 days). You can either:
+
+- **Restore an old soft-deleted project** at https://console.cloud.google.com/cloud-resource-manager → click "Show deleted projects" → restore one → reuse it.
+- **Request a quota increase** at https://support.google.com/code/contact/project_quota_increase (usually approved within an hour for personal accounts).
 
 ### Browser doesn't open
 
-The toolkit prints `▸ deploy-toolkit UI: http://localhost:NNNN`. Open that URL manually.
+The wizard prints `▸ deploy-toolkit UI: http://localhost:4242/` (or similar) in your terminal. Open that URL by hand.
 
-### Login OAuth tab closes but the wizard stays on "waiting for login"
+### The wizard says my old project still exists
 
-Wait 2-5 seconds for the polling to detect the new login state. If it still doesn't advance, check the terminal where you ran `./deploy-app` — firebase may have hit an error. Common cause: the wrong Google account auto-logged-in. Click **Switch account** on the Preflight page.
-
-### Deploy fails with `must be on the Blaze plan`
-
-You're trying to deploy Shape C without billing. Click the upgrade URL in the error, add a billing account in Firebase Console, then re-run `./deploy-app` and pick the same folder. The wizard's idempotency picks up where it left off.
-
-### Deploy fails with `Failed to add Firebase to Google Cloud Platform project. ... 403`
-
-First-time Firebase TOS isn't accepted on your Google account. Create one throwaway project via the Firebase Console UI, then retry.
-
-### Wizard says "Project ... already exists" but I want a fresh start
-
-Delete the saved config and the cloud project:
+After a successful deploy, the wizard remembers your folder. If you want a clean slate, delete the saved config:
 
 ```bash
-rm -f /path/to/your/app/{deploy-app.config.json,firebase.json,.firebaserc,firebase-debug.log}
-rm -rf /path/to/your/app/.firebase
-firebase projects:delete <project-id> --force
-./deploy-app
+rm /path/to/your/app/deploy-app.config.json
 ```
 
-### "I don't know which folder I picked"
+Then run the wizard again — it'll start fresh.
 
-Re-open the wizard with `./deploy-app` and check the Welcome page — it shows the current folder selection. Click **Choose different** to reset.
+### Still stuck?
 
-### Tests pass locally but the deploy still fails
-
-Run `nvm use 24` first. The default Node on most macOS setups is 18, which can't run the toolkit's test command (and may behave differently for builds).
+Open an issue at https://github.com/maurispalletti/deploy-toolkit/issues with what you tried and what happened (a screenshot of the terminal helps).
 
 ## 10. First time on a brand-new project
 
-When you deploy to a brand-new Firebase project, there are up to **three manual clicks** the toolkit can't automate. None take more than 30 seconds, but they matter — without them your deployed app won't do what you expect. The wizard surfaces them on the Done page as a checklist. This section is what you'd read if you wanted to know all of them up front.
+When you deploy to a brand-new Firebase project, there are up to **three manual clicks** the tool can't automate. None take more than 30 seconds. The wizard surfaces them on the Done page as a checklist. Read this section if you want to know all of them up front.
 
 ### Click 1 — Accept Firebase Terms of Service (first project ever)
 
-**When you need it:** the very first Firebase project you create on a Google account.
+The very first Firebase project on your Google account.
 
-**Why we can't automate it:** Google requires Firebase TOS to be accepted via the Firebase Console UI for an account before they let the API create new projects. Strictly an account-level consent flow.
+Open Firebase Console → create any throwaway project → accept the terms when asked. The wizard pauses on a friendly page guiding you through this when it happens. Once-per-account, ever.
 
-**What happens:** the wizard hits a `403 PERMISSION_DENIED` during provision and pauses on the **First-time setup** page. You click the button, create any throwaway project in the Firebase Console (you can delete it after), and come back. Once-per-account.
+<details>
+<summary>Why this can't be automated</summary>
 
-### Click 2 — Turn on Google sign-in (only when your app uses sign-in)
+Google requires the Firebase Terms of Service to be accepted via the Firebase Console UI before they let API tools create projects on your behalf. There's no programmatic equivalent. We've checked.
 
-**When you need it:** every new Firebase project where you answered "yes" to the sign-in question.
+</details>
 
-**Why we can't automate it:** Firebase has no CLI for auth provider settings. The underlying Identity Platform API exists but requires a Blaze upgrade, additional OAuth scopes, and OAuth-consent-screen configuration — Google deliberately gates this behind a manual click. See [REVISIT A2](REVISIT.md) for the gory details.
+### Click 2 — Turn on Google sign-in (only when your app uses it)
 
-**What happens:** the wizard's inject-auth stage **pre-opens the Firebase Console's sign-in providers page** in a new tab during deploy. You enable Google there (one click + pick a support email + Save). After deploy lands, the Done page shows it as the first item in your "what's left to do" checklist. Until you complete this, clicking "Sign in" in your deployed app fails with `auth/configuration-not-found`.
+Every new Firebase project where you said "yes" to sign-in.
 
-### Click 3 — Initialize Firestore (sometimes — only on a brand-new project)
+The wizard pre-opens the right Firebase Console page during deploy. You click "Google" in the list of sign-in providers, toggle it on, pick a support email, save. Until you do this, the Sign-in button in your app will fail with `auth/configuration-not-found`.
 
-**When you need it:** brand-new projects where you answered "yes" to the database question. Existing projects that already had Firestore set up don't need this.
+<details>
+<summary>Why this can't be automated</summary>
 
-**Why we can't automate it:** enabling the Firestore API is automatic, but creating the actual database (picking a region + native vs Datastore mode) requires the user to make choices. The `firebase firestore:databases:create` CLI command does exist but isn't yet wired into the toolkit (tracked as [REVISIT B6](REVISIT.md), P1).
+Firebase has no CLI command for auth provider settings. The underlying API exists (Identity Platform) but requires a Blaze upgrade and configuration of OAuth consent screens — Google deliberately gates this behind a manual click. Tracked as REVISIT A2.
 
-**What happens today:** the deploy stage fails with `403, The caller does not have permission` when it tries to deploy Firestore rules to a non-existent database. The recovery is currently manual: open Firebase Console → Firestore → "Create database" → pick a region → Production mode. Then re-run `./deploy-app` and click "Deploy a fresh build" to retry the deploy stage. The Done page checklist links you directly to the right console page.
+</details>
 
-### Why all three of these aren't fully automated
+### Click 3 — Initialize Firestore (sometimes — only on a brand-new project with a database)
 
-Each comes down to either a missing API (sign-in providers) or a user-consent step (TOS acceptance, OAuth setup, database mode choice) that Google deliberately doesn't expose programmatically. We can automate everything *around* them — the wizard prepares the project, writes the config, scaffolds the code, even pre-opens the right tab — but the final click stays in the human's hands.
+Brand-new projects where you said "yes" to the database question. Existing projects where Firestore is already set up don't need this.
+
+The wizard pre-opens the right Firebase Console page during deploy. You click "Create database", pick any region (eur3 or us-central1 are common), pick "Production mode", click Enable. Takes ~30 seconds.
+
+<details>
+<summary>Why this isn't yet automated</summary>
+
+A Firebase CLI command for this exists (`firebase firestore:databases:create`), but it requires picking a region as a flag with no good default. We'll wire it up once we settle on a region strategy. Tracked as REVISIT B6.
+
+</details>
 
 ### Cheat sheet
 
 ```
-Brand-new project + no sign-in + no database  →  1 click  (Firebase TOS, first project only)
-Brand-new project +    sign-in + no database  →  2 clicks (+ enable Google)
-Brand-new project +    sign-in +    database  →  3 clicks (+ create Firestore database)
-Existing project, redeploys                   →  0 clicks
+First time ever, no sign-in, no database  →  1 click  (accept Firebase terms)
+First time ever, with sign-in            →  2 clicks (+ enable Google)
+First time ever, with sign-in + database →  3 clicks (+ create Firestore database)
+Existing project, just redeploying       →  0 clicks
 ```
 
 ## 11. Further reading
 
-- **How every stage works internally:** [`HOW_IT_WORKS.md`](HOW_IT_WORKS.md)
-- **Backlog of design topics and follow-ups:** [`REVISIT.md`](REVISIT.md)
-- **Rolling back to a previous version:** [`ROLLBACK.md`](ROLLBACK.md)
-- **Hand-off prompts for external AI agents:** [`prompts/`](prompts/)
-- **UI implementation plan:** [`plans/2026-05-11-ui-wrapper-implementation.md`](plans/2026-05-11-ui-wrapper-implementation.md)
+- **How every stage works internally:** [HOW_IT_WORKS.md](HOW_IT_WORKS.md) — for developers wanting to understand or contribute.
+- **Backlog of design topics and follow-ups:** [REVISIT.md](REVISIT.md) — running list of what's planned, what's deferred, and why.
+- **Rolling back to a previous version:** [ROLLBACK.md](ROLLBACK.md) — how to go back to the v0.1-cli tag if a new release misbehaves.
+- **Hand-off prompts for external AI agents:** [prompts/](prompts/) — briefs another AI can read to extend the toolkit.
