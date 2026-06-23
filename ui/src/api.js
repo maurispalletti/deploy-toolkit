@@ -29,6 +29,11 @@ export async function postPlan(appDir, answers) {
   return r.json();
 }
 
+export async function postSetupDevTools() {
+  const r = await fetch("/api/setup-dev-tools", { method: "POST" });
+  return r.json();
+}
+
 export async function postLogin() {
   const r = await fetch("/api/login", { method: "POST" });
   return r.json();
@@ -86,6 +91,32 @@ export async function generateAuthRefactorPrompt(appDir, payload = {}) {
   });
   if (!r.ok) throw new Error(`refactor-prompt ${r.status}`);
   return r.json();
+}
+
+// Runs the init-project stage for "start from scratch" mode.
+// Streams log lines, calls onScratchDone({ projectName, appDir, repoUrl }) on success.
+export function runInitProject(parentDir, projectName, { onLog, onScratchDone, onError }) {
+  return new Promise((resolve) => {
+    const url = `/api/init-project?parentDir=${encodeURIComponent(parentDir)}&projectName=${encodeURIComponent(projectName)}`;
+    const es = new EventSource(url);
+    es.addEventListener("log", (e) => {
+      const { line } = JSON.parse(e.data);
+      onLog?.(line);
+    });
+    es.addEventListener("scratch-done", (e) => {
+      onScratchDone?.(JSON.parse(e.data));
+    });
+    es.addEventListener("done", (e) => {
+      es.close();
+      resolve(JSON.parse(e.data));
+    });
+    es.addEventListener("error", (e) => {
+      const data = e.data ? JSON.parse(e.data) : { message: "stream error" };
+      onError?.(data);
+      es.close();
+      resolve({ exitCode: -1, error: data });
+    });
+  });
 }
 
 // Runs a stage, calls onLog(line) per log line, returns { exitCode, error? }

@@ -13,6 +13,9 @@ check_cmd() {
   fi
 }
 
+TOOLKIT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+bash "$TOOLKIT_DIR/stages/setup-dev-tools.sh"
+
 step "Checking Node.js (>= 22)"
 check_cmd node "https://nodejs.org/ (or use nvm: 'nvm install 22')"
 node_major=$(node -p 'process.versions.node.split(".")[0]')
@@ -29,9 +32,15 @@ if ! command -v firebase >/dev/null 2>&1; then
       fail "Firebase CLI required. Install manually: npm install -g firebase-tools"
       ;;
     *)
-      npm install -g firebase-tools || fail "Install failed. Try manually: npm install -g firebase-tools"
+      if command -v firebase >/dev/null 2>&1; then
+        printf "  Firebase CLI already installed — skipping\n"
+      else
+        npm install -g firebase-tools || fail "Install failed. Try manually: npm install -g firebase-tools"
+      fi
       ;;
   esac
+else
+  printf "  Firebase CLI already installed (%s)\n" "$(command -v firebase)"
 fi
 
 step "Checking firebase login"
