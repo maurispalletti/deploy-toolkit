@@ -8,6 +8,7 @@ import PlanSummary from "./pages/PlanSummary.jsx";
 import Progress from "./pages/Progress.jsx";
 import Done from "./pages/Done.jsx";
 import Bootstrap from "./pages/Bootstrap.jsx";
+import ScratchSetup from "./pages/ScratchSetup.jsx";
 import IncompatibleApp from "./pages/IncompatibleApp.jsx";
 import HardcodedSecretsBlock from "./pages/HardcodedSecretsBlock.jsx";
 import SecretsClassify from "./pages/SecretsClassify.jsx";
@@ -32,6 +33,7 @@ import { getAppDir } from "./api.js";
 //  11 SecretsClassify (C6 phase 2)
 //  12 AuthScaffoldChoice (A1 path picker — only shown when needsAuth)
 //  13 AuthRefactorPrompt (A1 prompt-path content — only shown when authChoice=prompt)
+//  14 ScratchSetup (start-from-scratch path: project name + init stage)
 
 // Routing helper: given an inspection result, pick the next step on the
 // happy path. Used after Inspector confirm AND after re-inspections from
@@ -57,6 +59,8 @@ export default function App() {
   // C6 phase-2 classification answers — stored separately from `answers`
   // so the Questions page doesn't need to know about per-key state.
   const [secretsAnswers, setSecretsAnswers] = useState(null);
+  // "start from scratch" path: parentDir is where the project subfolder gets created.
+  const [scratchParentDir, setScratchParentDir] = useState("");
 
   useEffect(() => {
     getAppDir().then((d) => {
@@ -85,6 +89,7 @@ export default function App() {
     setAnswers(null);
     setPlan(null);
     setSecretsAnswers(null);
+    setScratchParentDir("");
   }
 
   if (!loaded) return <div className="container">Loading…</div>;
@@ -97,9 +102,18 @@ export default function App() {
           appDir={appDir}
           onAppDirChange={setAppDir}
           onNext={next}
+          onScratch={(parentDir) => {
+            setScratchParentDir(parentDir);
+            setStep(2);
+          }}
         />
       )}
-      {step === 2 && <Preflight onBack={back} onNext={next} />}
+      {step === 2 && (
+        <Preflight
+          onBack={back}
+          onNext={() => scratchParentDir ? setStep(14) : next()}
+        />
+      )}
       {step === 3 && <Inspector appDir={appDir} onBack={back} onConfirm={(i) => {
         setInspection(i);
         // Routing: prefer the block pages (DB incompat, then hardcoded
@@ -216,6 +230,16 @@ export default function App() {
           inspection={inspection}
           answers={answers}
           onContinue={() => setStep(5)}
+        />
+      )}
+      {step === 14 && (
+        <ScratchSetup
+          parentDir={scratchParentDir}
+          onBack={() => setStep(2)}
+          onDone={(newAppDir) => {
+            setAppDir(newAppDir);
+            resetWizard();
+          }}
         />
       )}
     </div>

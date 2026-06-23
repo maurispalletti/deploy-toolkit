@@ -3,11 +3,44 @@ import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
 import BackButton from "../components/BackButton.jsx";
 import StatusRow from "../components/StatusRow.jsx";
-import { getPreflight, postLogin } from "../api.js";
+import { getPreflight, postLogin, postSetupDevTools } from "../api.js";
+
+const DEV_TOOLS = [
+  {
+    key: "brew",
+    title: "Homebrew — installs developer tools on your Mac",
+    missing: "Not installed yet. We'll install it for you (needs your password).",
+    ok: "Installed — we use this to install Git and GitHub CLI.",
+    optional: true,
+  },
+  {
+    key: "git",
+    title: "Git — version control for your code",
+    missing: "Not installed yet. We'll install it via Homebrew.",
+    ok: "Installed.",
+  },
+  {
+    key: "gh",
+    title: "GitHub CLI (gh) — talks to GitHub from your terminal",
+    missing: "Not installed yet. We'll install it via Homebrew.",
+    ok: "Installed.",
+  },
+];
+
+function devToolsOk(state) {
+  if (!state) return false;
+  return DEV_TOOLS.every(({ key, optional }) => {
+    const tool = state[key];
+    if (!tool) return false;
+    if (optional && tool.required === false) return true;
+    return tool.ok;
+  });
+}
 
 export default function Preflight({ onBack, onNext }) {
   const [state, setState] = useState(null);
   const [loginPolling, setLoginPolling] = useState(false);
+  const [setupPolling, setSetupPolling] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -18,12 +51,14 @@ export default function Preflight({ onBack, onNext }) {
       } catch {}
     }
     poll();
-    if (!loginPolling) return () => { cancelled = true; };
+    if (!loginPolling && !setupPolling) return () => { cancelled = true; };
     const id = setInterval(poll, 2000);
     return () => { cancelled = true; clearInterval(id); };
-  }, [loginPolling]);
+  }, [loginPolling, setupPolling]);
 
-  const allOk = state && state.node.ok && state.firebaseCli.ok && state.login.ok;
+  const devOk = devToolsOk(state);
+  const allOk = state && devOk && state.node.ok && state.firebaseCli.ok && state.login.ok;
+  const needsDevSetup = state && !devOk;
 
   // Auto-advance once everything is green AND we were waiting for login.
   // Gives a brief moment to see the green checkmarks before moving on.
@@ -37,8 +72,33 @@ export default function Preflight({ onBack, onNext }) {
   return (
     <Card
       title="Quick check before we start"
-      sub="We need a couple of tools on your computer and your Google account signed in. We'll check for you — if anything's missing we'll help fix it."
+      sub="We need a few tools on your computer and your Google account signed in. We'll check for you — if anything's missing we'll help fix it."
     >
+      {DEV_TOOLS.map(({ key, title, missing, ok, optional }) => {
+        const tool = state?.[key];
+        if (optional && tool && tool.required === false) return null;
+        return (
+          <StatusRow
+            key={key}
+            state={tool ? (tool.ok ? "ok" : "fail") : "pending"}
+            title={title}
+            meta={tool ? (tool.installed ? ok : missing) : "checking…"}
+          />
+        );
+      })}
+      {needsDevSetup && !setupPolling && (
+        <div className="btn-row">
+          <Button onClick={async () => {
+            await postSetupDevTools();
+            setSetupPolling(true);
+          }}>
+            Install missing tools
+          </Button>
+        </div>
+      )}
+      {setupPolling && !devOk && (
+        <p className="muted">Installing in your terminal — follow the prompts there, then we'll recheck automatically.</p>
+      )}
       <StatusRow
         state={state?.node ? (state.node.ok ? "ok" : "fail") : "pending"}
         title="Node.js — runs your app's build step"

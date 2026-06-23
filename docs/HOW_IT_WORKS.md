@@ -10,7 +10,7 @@ Plain-English walkthrough of every step the script takes when you run `./deploy-
 
 | # | Stage | File | What it does |
 |---|---|---|---|
-| 1 | Preflight | `stages/preflight.sh` | Verify Node, Firebase CLI, and login |
+| 1 | Preflight | `stages/preflight.sh` | Install/check Homebrew, Git, GitHub CLI; verify Node, Firebase CLI, and login |
 | 2 | Brain | `lib/brain.mjs` | Inspect folder, interview, write config |
 | 3 | Provision | `stages/provision.sh` | Create Firebase project, write Firebase files |
 | 3.5 | Inject secrets | `stages/inject-secrets.sh` | Write `.env.production` + set Firebase Functions secrets |
@@ -23,11 +23,12 @@ The orchestrator (`deploy-app`) also does one thing before stage 1: if `nvm` is 
 
 ## Stage 1 — Preflight (`stages/preflight.sh`)
 
-Three checks, fail-fast:
+Runs in order:
 
-1. **Node 22+.** Reads `process.versions.node` and exits if the major version is below 22. The orchestrator already tries to switch via nvm, so this is the safety net for users without nvm.
-2. **Firebase CLI present.** Runs `command -v firebase`. If missing, it prompts: `Install it now via 'npm install -g firebase-tools'? [Y/n]`. Default is yes; on consent it runs the install for you.
-3. **Firebase login.** Calls `firebase projects:list` and, if that fails, runs `firebase login` (which opens a browser).
+1. **Dev tools** (`stages/setup-dev-tools.sh`) — on macOS, installs Homebrew if missing, then Git, then GitHub CLI (`gh`), each with install-on-consent prompts. On Linux, skips Homebrew and checks Git/`gh` with manual install hints.
+2. **Node 22+.** Reads `process.versions.node` and exits if the major version is below 22. The orchestrator already tries to switch via nvm, so this is the safety net for users without nvm.
+3. **Firebase CLI present.** Runs `command -v firebase`. If missing, it prompts: `Install it now via 'npm install -g firebase-tools'? [Y/n]`. Default is yes; on consent it runs the install for you.
+4. **Firebase login.** Calls `firebase projects:list` and, if that fails, runs `firebase login` (which opens a browser).
 
 Then it shows which Google account is currently active by parsing `firebase login:list`:
 
