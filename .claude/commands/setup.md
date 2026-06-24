@@ -11,11 +11,6 @@ For each tool below, if it is **already installed** run the update command; if i
   - install: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/homebrew/install/HEAD/install.sh)"`
   - update: `brew update && brew upgrade`
 
-- **bru**
-  - check: `bru --version`
-  - install: `npm install -g @usebruno/cli`
-  - update: `npm update -g @usebruno/cli`
-
 - **git**
   - check: `git --version`
   - install: `brew install git`
