@@ -2,17 +2,14 @@ Check and install all required CLI tools, then ensure the user is authenticated 
 
 Run each step below in sequence:
 
-## 1. Check for Homebrew (required for installs on macOS)
-
-Run `which brew`. If missing, tell the user to install Homebrew first by running:
-```
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/homebrew/install/HEAD/install.sh)"
-```
-Then stop — the remaining steps need brew.
-
-## 2. Install or update all tools
+## 1. Install or update all tools
 
 For each tool below, if it is **already installed** run the update command; if it is **not installed** run the install command:
+
+- **homebrew**
+  - check: `brew --version`
+  - install: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/homebrew/install/HEAD/install.sh)"`
+  - update: `brew update && brew upgrade`
 
 - **bru**
   - check: `bru --version`
@@ -41,7 +38,7 @@ For each tool below, if it is **already installed** run the update command; if i
 
 Report each tool's status (updated / freshly installed / failed) and the version after the operation.
 
-## 3. Check GitHub CLI auth
+## 2. Check GitHub CLI auth
 
 Run `gh auth status`. If the user is not logged in (exit code non-zero or output says "not logged in"), tell them to run:
 ```
@@ -49,7 +46,7 @@ gh auth login
 ```
 and wait for them to confirm before continuing.
 
-## 4. Check Firebase CLI auth
+## 3. Check Firebase CLI auth
 
 Run `firebase projects:list` (a lightweight authenticated call). If it fails with an auth error, tell the user to run:
 ```
@@ -57,6 +54,6 @@ firebase login
 ```
 and wait for them to confirm they've completed the login before continuing.
 
-## 5. Summary
+## 4. Summary
 
 Print a table showing each tool's installed version and auth status.
