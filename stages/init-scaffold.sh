@@ -12,6 +12,68 @@ toolkit_error(){ printf "DEPLOY_TOOLKIT_ERROR:%s:%s\n" "$1" "$2"; }
 
 cd "$APP_DIR"
 
+# ── 0. Fetch Firebase SDK config and write .env.local ─────────────────────────
+step "Fetching Firebase SDK config"
+# Get the web app ID for this project
+firebase apps:list WEB --project "$PROJECT_NAME" --json \
+  >/tmp/dt_apps_list.json 2>&1 || echo '{}' >/tmp/dt_apps_list.json
+
+APP_ID=$(node -e "
+let d=''; process.stdin.on('data',c=>d+=c);
+process.stdin.on('end',()=>{
+  try { process.stdout.write((JSON.parse(d).result||[])[0]?.appId||''); }
+  catch { process.stdout.write(''); }
+});
+" </tmp/dt_apps_list.json 2>/dev/null || true)
+
+info "Web app ID: ${APP_ID:-'(not found)'}"
+
+if [ -n "$APP_ID" ]; then
+  # Capture both: plain JS snippet (reliable) and JSON (fallback)
+  firebase apps:sdkconfig "$APP_ID" --project "$PROJECT_NAME" \
+    >/tmp/dt_sdk.txt 2>&1 || true
+
+  info "Raw sdkconfig output:"
+  cat /tmp/dt_sdk.txt
+
+  cat > /tmp/dt_write_env.js << 'JSEOF'
+const fs = require('fs');
+const appDir = process.argv[2];
+
+function extract(txt, key) {
+  // Handle both double and single quoted values: key: "val" or key: 'val'
+  const m = txt.match(new RegExp(key + '\\s*[=:]\\s*["\']([^"\']+)["\']'));
+  return m ? m[1] : '';
+}
+
+const txt = fs.readFileSync('/tmp/dt_sdk.txt', 'utf8');
+const c = {
+  apiKey:            extract(txt, 'apiKey'),
+  authDomain:        extract(txt, 'authDomain'),
+  projectId:         extract(txt, 'projectId'),
+  storageBucket:     extract(txt, 'storageBucket'),
+  messagingSenderId: extract(txt, 'messagingSenderId'),
+  appId:             extract(txt, 'appId'),
+};
+
+console.log('  apiKey found:', !!c.apiKey);
+
+fs.writeFileSync(appDir + '/.env.local', [
+  'NEXT_PUBLIC_FIREBASE_API_KEY='              + (c.apiKey             || ''),
+  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN='         + (c.authDomain         || ''),
+  'NEXT_PUBLIC_FIREBASE_PROJECT_ID='          + (c.projectId          || ''),
+  'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET='      + (c.storageBucket      || ''),
+  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=' + (c.messagingSenderId  || ''),
+  'NEXT_PUBLIC_FIREBASE_APP_ID='              + (c.appId              || ''),
+].join('\n') + '\n');
+console.log('  Wrote .env.local');
+JSEOF
+
+  node /tmp/dt_write_env.js "$APP_DIR"
+else
+  info "Warning: no web app found for project '$PROJECT_NAME' — .env.local will have empty values"
+fi
+
 # ── 1. Scaffold Next.js 14 into a temp dir, then copy over ───────────────────
 step "Scaffolding Next.js 14 (this takes a minute…)"
 TEMP_DIR="$(dirname "$APP_DIR")/scaffold-tmp-$$"
