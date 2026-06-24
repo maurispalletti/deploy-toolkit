@@ -3,7 +3,7 @@ import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
 import BackButton from "../components/BackButton.jsx";
 import StatusRow from "../components/StatusRow.jsx";
-import { pickFolder, getResumeConfig } from "../api.js";
+import { pickFolder, getResumeConfig, getFirebaseProjects } from "../api.js";
 
 export default function Welcome({ appDir, onAppDirChange, onNext, onScratch, onContinue }) {
   const [subStep, setSubStep] = useState(0);
@@ -12,6 +12,7 @@ export default function Welcome({ appDir, onAppDirChange, onNext, onScratch, onC
   const [picking, setPicking] = useState(false);
   const [checking, setChecking] = useState(false);
   const [resumeInfo, setResumeInfo] = useState(null);
+  const [checkedProject, setCheckedProject] = useState(null);
 
   async function browse() {
     setError(null);
@@ -30,13 +31,21 @@ export default function Welcome({ appDir, onAppDirChange, onNext, onScratch, onC
   async function handleNext() {
     setChecking(true);
     try {
-      const info = await getResumeConfig(folder);
-      // Show "Continue" if there's any sign of prior work: a saved plan,
-      // a linked Firebase project (.firebaserc), or a GitHub remote.
+      const folderBase = folder.replace(/\\/g, "/").split("/").filter(Boolean).at(-1) ?? "";
+      const [info, { projectIds }] = await Promise.all([
+        getResumeConfig(folder).catch(() => ({})),
+        getFirebaseProjects().catch(() => ({ projectIds: [] })),
+      ]);
       const hasPriorWork = !!(info.firebaseProjectId || info.githubRepoUrl);
       setResumeInfo(hasPriorWork ? info : null);
+      // Check if the folder name matches an existing Firebase project.
+      const matchedProject = projectIds.some(id => id.toLowerCase() === folderBase.toLowerCase())
+        ? folderBase
+        : null;
+      setCheckedProject(matchedProject);
     } catch {
       setResumeInfo(null);
+      setCheckedProject(null);
     } finally {
       setChecking(false);
       setSubStep(1);
@@ -116,7 +125,7 @@ export default function Welcome({ appDir, onAppDirChange, onNext, onScratch, onC
           className="choice-card"
           onClick={() => {
             onAppDirChange(folder);
-            onNext();
+            onNext({ existingProject: !!checkedProject, existingProjectId: checkedProject });
           }}
         >
           <div className="choice-icon">🚀</div>

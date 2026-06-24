@@ -142,7 +142,13 @@ export default function App() {
         <Welcome
           appDir={appDir}
           onAppDirChange={setAppDir}
-          onNext={() => { setFlow("existing"); next(); }}
+          onNext={({ existingProject, existingProjectId } = {}) => {
+        setFlow("existing");
+        if (existingProject) {
+          setAnswers(prev => ({ ...(prev ?? {}), existingProject: true, appName: existingProjectId }));
+        }
+        next();
+      }}
           onScratch={(parentDir) => {
             setFlow("scratch");
             setScratchParentDir(parentDir);
