@@ -115,7 +115,7 @@ export default function ScaffoldSetup({ projectName, appDir, repoUrl, onDone }) 
         </div>
 
         <div className="btn-row">
-          <Button onClick={() => onDone(appDir)}>Done</Button>
+          <Button onClick={() => onDone(appDir)}>Continue</Button>
         </div>
       </Card>
     );

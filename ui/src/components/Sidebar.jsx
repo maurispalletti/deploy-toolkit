@@ -86,6 +86,13 @@ const SCRATCH_STEPS = [
     targetStep: 17,
     internalSteps: [17],
   },
+  {
+    id: "open",
+    label: "Open in editor",
+    desc: "Open the project in your IDE",
+    targetStep: 18,
+    internalSteps: [18],
+  },
 ];
 
 export default function Sidebar({ flow, currentStep, onNavigate }) {

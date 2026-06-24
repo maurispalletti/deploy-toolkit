@@ -39,6 +39,15 @@ export async function postLogin() {
   return r.json();
 }
 
+export async function postOpenInIDE(ide, appDir) {
+  const r = await fetch("/api/open-in-ide", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ide, appDir }),
+  });
+  return r.json();
+}
+
 export async function postFirebaseLogout() {
   const r = await fetch("/api/firebase-logout", { method: "POST" });
   return r.json();

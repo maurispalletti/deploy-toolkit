@@ -11,6 +11,7 @@ import Bootstrap from "./pages/Bootstrap.jsx";
 import ScratchSetup from "./pages/ScratchSetup.jsx";
 import GitHubSetup from "./pages/GitHubSetup.jsx";
 import ScaffoldSetup from "./pages/ScaffoldSetup.jsx";
+import OpenInIDE from "./pages/OpenInIDE.jsx";
 import Prerequisites from "./pages/Prerequisites.jsx";
 import IncompatibleApp from "./pages/IncompatibleApp.jsx";
 import HardcodedSecretsBlock from "./pages/HardcodedSecretsBlock.jsx";
@@ -40,6 +41,7 @@ import { getAppDir } from "./api.js";
 //  15 Prerequisites (scratch path: check/install required tools before ScratchSetup)
 //  16 GitHubSetup (scratch path: Firebase project creation)
 //  17 ScaffoldSetup (scratch path: Next.js + Shadcn + TanStack scaffold)
+//  18 OpenInIDE (scratch path: open project in Cursor / VS Code / Antigravity / Devin)
 
 // Routing helper: given an inspection result, pick the next step on the
 // happy path. Used after Inspector confirm AND after re-inspections from
@@ -281,7 +283,16 @@ export default function App() {
           appDir={scratchAppDir}
           repoUrl={scratchRepoUrl}
           onDone={(newAppDir) => {
-            setAppDir(newAppDir);
+            setScratchAppDir(newAppDir);
+            setStep(18);
+          }}
+        />
+      )}
+      {step === 18 && (
+        <OpenInIDE
+          appDir={scratchAppDir}
+          onDone={() => {
+            setAppDir(scratchAppDir);
             resetWizard();
           }}
         />

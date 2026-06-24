@@ -44,6 +44,29 @@ export function mountAuth(app, serverRef) {
     res.json({ started: true });
   });
 
+  app.post("/api/open-in-ide", (req, res) => {
+    const { ide, appDir } = req.body;
+    if (!appDir) return res.status(400).json({ error: "appDir is required" });
+
+    const openApp = (name) => spawn("open", ["-a", name, appDir], { stdio: "ignore" });
+
+    if (ide === "cursor") {
+      const p = spawn("cursor", [appDir], { stdio: "ignore" });
+      p.on("error", () => openApp("Cursor"));
+    } else if (ide === "vscode") {
+      const p = spawn("code", [appDir], { stdio: "ignore" });
+      p.on("error", () => openApp("Visual Studio Code"));
+    } else if (ide === "antigravity") {
+      openApp("Antigravity");
+    } else if (ide === "devin") {
+      openApp("Devin");
+    } else {
+      return res.status(400).json({ error: "Unknown IDE" });
+    }
+
+    res.json({ ok: true });
+  });
+
   app.post("/api/quit", (_req, res) => {
     res.json({ ok: true });
     setTimeout(() => {
