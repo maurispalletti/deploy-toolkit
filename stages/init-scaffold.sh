@@ -505,7 +505,7 @@ EOF
 step "Creating Firebase web app and fetching SDK config"
 set +e
 CREATE_APP_JSON=$(firebase apps:create web "$PROJECT_NAME" \
-  --project "$PROJECT_NAME" --json 2>&1)
+  --project "$PROJECT_NAME" --json 2>/dev/null)
 CREATE_EXIT=$?
 set -e
 
@@ -513,10 +513,10 @@ APP_ID=""
 if [ $CREATE_EXIT -eq 0 ]; then
   APP_ID=$(node -e "
 try {
-  const d = JSON.parse(process.argv[1]);
+  const d = JSON.parse(process.argv[2]);
   process.stdout.write(d.result?.appId || '');
 } catch { process.stdout.write(''); }
-" "$CREATE_APP_JSON")
+" -- "$CREATE_APP_JSON")
 fi
 
 if [ -z "$APP_ID" ]; then
@@ -524,10 +524,10 @@ if [ -z "$APP_ID" ]; then
   APPS_JSON=$(firebase apps:list WEB --project "$PROJECT_NAME" --json 2>/dev/null || echo '{}')
   APP_ID=$(node -e "
 try {
-  const d = JSON.parse(process.argv[1]);
+  const d = JSON.parse(process.argv[2]);
   process.stdout.write((d.result || [])[0]?.appId || '');
 } catch { process.stdout.write(''); }
-" "$APPS_JSON")
+" -- "$APPS_JSON")
 fi
 
 if [ -z "$APP_ID" ]; then
@@ -543,19 +543,21 @@ SDK_JSON=$(firebase apps:sdkconfig "$APP_ID" \
 
 node -e "
 const fs = require('fs');
-const d = JSON.parse(process.argv[1]);
-const c = d.result?.sdkConfig || {};
-const lines = [
-  'NEXT_PUBLIC_FIREBASE_API_KEY='              + (c.apiKey             || ''),
-  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN='         + (c.authDomain         || ''),
-  'NEXT_PUBLIC_FIREBASE_PROJECT_ID='          + (c.projectId          || ''),
-  'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET='      + (c.storageBucket      || ''),
-  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=' + (c.messagingSenderId  || ''),
-  'NEXT_PUBLIC_FIREBASE_APP_ID='              + (c.appId              || ''),
-];
-fs.writeFileSync('.env.local', lines.join('\n') + '\n');
-console.log('  Wrote .env.local');
-" "$SDK_JSON"
+try {
+  const d = JSON.parse(process.argv[2]);
+  const c = d.result?.sdkConfig || {};
+  const lines = [
+    'NEXT_PUBLIC_FIREBASE_API_KEY='              + (c.apiKey             || ''),
+    'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN='         + (c.authDomain         || ''),
+    'NEXT_PUBLIC_FIREBASE_PROJECT_ID='          + (c.projectId          || ''),
+    'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET='      + (c.storageBucket      || ''),
+    'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=' + (c.messagingSenderId  || ''),
+    'NEXT_PUBLIC_FIREBASE_APP_ID='              + (c.appId              || ''),
+  ];
+  fs.writeFileSync('.env.local', lines.join('\n') + '\n');
+  console.log('  Wrote .env.local');
+} catch (e) { console.error('  Warning: could not parse SDK config:', e.message); }
+" -- "$SDK_JSON"
 
 # ── 9. Firestore database + rules ─────────────────────────────────────────────
 step "Setting up Firestore"
