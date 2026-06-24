@@ -3,13 +3,15 @@ import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
 import BackButton from "../components/BackButton.jsx";
 import StatusRow from "../components/StatusRow.jsx";
-import { pickFolder } from "../api.js";
+import { pickFolder, getResumeConfig } from "../api.js";
 
-export default function Welcome({ appDir, onAppDirChange, onNext, onScratch }) {
+export default function Welcome({ appDir, onAppDirChange, onNext, onScratch, onContinue }) {
   const [subStep, setSubStep] = useState(0);
   const [folder, setFolder] = useState(appDir || "");
   const [error, setError] = useState(null);
   const [picking, setPicking] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [resumeInfo, setResumeInfo] = useState(null);
 
   async function browse() {
     setError(null);
@@ -22,6 +24,22 @@ export default function Welcome({ appDir, onAppDirChange, onNext, onScratch }) {
       setError(err.message);
     } finally {
       setPicking(false);
+    }
+  }
+
+  async function handleNext() {
+    setChecking(true);
+    try {
+      const info = await getResumeConfig(folder);
+      // Show "Continue" if there's any sign of prior work: a saved plan,
+      // a linked Firebase project (.firebaserc), or a GitHub remote.
+      const hasPriorWork = !!(info.firebaseProjectId || info.githubRepoUrl);
+      setResumeInfo(hasPriorWork ? info : null);
+    } catch {
+      setResumeInfo(null);
+    } finally {
+      setChecking(false);
+      setSubStep(1);
     }
   }
 
@@ -58,7 +76,9 @@ export default function Welcome({ appDir, onAppDirChange, onNext, onScratch }) {
           </div>
         )}
         <div className="btn-row" style={{ justifyContent: "flex-end" }}>
-          <Button onClick={() => setSubStep(1)} disabled={!hasFolder}>Next</Button>
+          <Button onClick={handleNext} disabled={!hasFolder || checking}>
+            {checking ? "Checking…" : "Next"}
+          </Button>
         </div>
       </Card>
     );
@@ -70,6 +90,28 @@ export default function Welcome({ appDir, onAppDirChange, onNext, onScratch }) {
       sub={<span className="codepath">{folder}</span>}
     >
       <div className="choice-list">
+        {resumeInfo && (
+          <button
+            className="choice-card recommended"
+            onClick={() => {
+              onAppDirChange(folder);
+              onContinue(resumeInfo);
+            }}
+          >
+            <div className="choice-icon">🔁</div>
+            <div className="choice-body">
+              <div className="choice-title">
+                Continue this project
+                <span className="choice-tag">{resumeInfo.hasConfig ? "Previously deployed" : "Existing project"}</span>
+              </div>
+              <div className="choice-meta">
+                {resumeInfo.hasConfig
+                  ? "Pick up where you left off — re-deploy or enable new Firebase services like Firestore and Auth."
+                  : "We found an existing repo. Finish setting up deployment for this project."}
+              </div>
+            </div>
+          </button>
+        )}
         <button
           className="choice-card"
           onClick={() => {
@@ -80,7 +122,11 @@ export default function Welcome({ appDir, onAppDirChange, onNext, onScratch }) {
           <div className="choice-icon">🚀</div>
           <div className="choice-body">
             <div className="choice-title">Publish an existing app</div>
-            <div className="choice-meta">Your app is already built — let's put it on the internet.</div>
+            <div className="choice-meta">
+              {resumeInfo
+                ? "Run the full wizard again from scratch."
+                : "Your app is already built — let's put it on the internet."}
+            </div>
           </div>
         </button>
         <button

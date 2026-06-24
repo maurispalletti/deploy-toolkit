@@ -18,6 +18,7 @@ import HardcodedSecretsBlock from "./pages/HardcodedSecretsBlock.jsx";
 import SecretsClassify from "./pages/SecretsClassify.jsx";
 import AuthScaffoldChoice from "./pages/AuthScaffoldChoice.jsx";
 import AuthRefactorPrompt from "./pages/AuthRefactorPrompt.jsx";
+import ContinueProject from "./pages/ContinueProject.jsx";
 import { getAppDir } from "./api.js";
 
 // Wizard step ID map. The history of these numbers is sticky — earlier
@@ -42,6 +43,7 @@ import { getAppDir } from "./api.js";
 //  16 GitHubSetup (scratch path: Firebase project creation)
 //  17 ScaffoldSetup (scratch path: Next.js + Shadcn + TanStack scaffold)
 //  18 OpenInIDE (scratch path: open project in Cursor / VS Code / Antigravity / Devin)
+//  20 ContinueProject (continue path: resume a previously deployed project)
 
 // Routing helper: given an inspection result, pick the next step on the
 // happy path. Used after Inspector confirm AND after re-inspections from
@@ -72,10 +74,12 @@ export default function App() {
   const [scratchProjectName, setScratchProjectName] = useState("");
   const [scratchAppDir, setScratchAppDir] = useState("");
   const [scratchRepoUrl, setScratchRepoUrl] = useState("");
-  const [flow, setFlow] = useState("unknown"); // "unknown" | "existing" | "scratch"
+  const [flow, setFlow] = useState("unknown"); // "unknown" | "existing" | "scratch" | "continue"
   // Tracks which step the user was on before jumping to step 18 mid-flow.
   // null means step 18 was reached naturally at the end of step 17.
   const [openInIDEFrom, setOpenInIDEFrom] = useState(null);
+  // Subset of stage IDs to run in the Progress page. null = run all stages.
+  const [progressStages, setProgressStages] = useState(null);
 
   useEffect(() => {
     getAppDir().then((d) => {
@@ -84,14 +88,20 @@ export default function App() {
     });
   }, []);
 
-  // If we have an appDir AND we're on the welcome page AND a saved config exists,
-  // jump straight to Done. Only check when appDir changes — not after the user picks.
+  // If appDir is pre-set from the CLI and the folder looks like an existing
+  // project (saved config, .firebaserc, or git remote), go straight to
+  // ContinueProject so the user can re-deploy or add services without re-running
+  // the full wizard.
   useEffect(() => {
     if (!appDir || step !== 1) return;
-    import("./api.js").then(({ getExistingConfig }) => {
-      getExistingConfig(appDir).then(({ existing, plan: existingPlan }) => {
-        if (existing) { setPlan(existingPlan); setStep(7); }
-      });
+    import("./api.js").then(({ getResumeConfig }) => {
+      getResumeConfig(appDir).then((info) => {
+        if (info.firebaseProjectId || info.githubRepoUrl) {
+          setPlan(info.plan ?? null);
+          setFlow("continue");
+          setStep(20);
+        }
+      }).catch(() => {});
     });
   }, [appDir]);
 
@@ -110,6 +120,7 @@ export default function App() {
     setScratchRepoUrl("");
     setFlow("unknown");
     setOpenInIDEFrom(null);
+    setProgressStages(null);
   }
 
   if (!loaded) return <div className="container">Loading…</div>;
@@ -136,6 +147,11 @@ export default function App() {
             setFlow("scratch");
             setScratchParentDir(parentDir);
             setStep(15);
+          }}
+          onContinue={(resumeInfo) => {
+            setPlan(resumeInfo.plan ?? null);
+            setFlow("continue");
+            setStep(20);
           }}
         />
       )}
@@ -167,12 +183,12 @@ export default function App() {
         />
       )}
       {step === 5 && <PlanSummary appDir={appDir} answers={answers} secretsAnswers={secretsAnswers} onBack={back} onDeploy={(p) => { setPlan(p); next(); }} />}
-      {step === 6 && <Progress appDir={appDir} onDone={next}
+      {step === 6 && <Progress appDir={appDir} stages={progressStages} onDone={next}
         onError={(err) => {
           if (err.code === "NEEDS_BOOTSTRAP") setStep(8);
           else alert(`Stage ${err.stage} failed (exit ${err.exitCode}).`);
         }} />}
-      {step === 7 && <Done plan={plan} onRedeploy={() => setStep(6)} onAnother={resetWizard} />}
+      {step === 7 && <Done plan={plan} onRedeploy={() => { setProgressStages(null); setStep(6); }} onAnother={resetWizard} />}
       {step === 8 && <Bootstrap onRetry={() => setStep(6)} />}
       {step === 9 && (
         <IncompatibleApp
@@ -312,6 +328,24 @@ export default function App() {
               setAppDir(scratchAppDir);
               resetWizard();
             }
+          }}
+        />
+      )}
+      {step === 20 && (
+        <ContinueProject
+          appDir={appDir}
+          plan={plan}
+          onBack={() => setStep(1)}
+          onSetupDeploy={() => { setFlow("existing"); setStep(2); }}
+          onQuickDeploy={(p) => {
+            setPlan(p);
+            setProgressStages(["provision", "restore-env", "build", "deploy"]);
+            setStep(6);
+          }}
+          onFullDeploy={(p) => {
+            setPlan(p);
+            setProgressStages(null);
+            setStep(6);
           }}
         />
       )}

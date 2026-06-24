@@ -14,30 +14,46 @@ NEEDS_DB=$(node -p "require('$CONFIG').firestore !== null")
 
 cd "$APP_DIR"
 
-# Create the Firebase project (idempotent: skip if exists).
-# Capture output first to avoid `set -o pipefail` flagging SIGPIPE when grep -q
-# closes stdin early. Use --json for stable parsing across CLI versions.
-PROJECT_LIST_JSON=$(firebase projects:list --json 2>/dev/null || true)
-PROJECT_EXISTS=$(node -e '
+# If .firebaserc already points at this project the project exists — skip creation.
+FIREBASERC_PROJECT=$(node -e '
+try {
+  const rc = JSON.parse(require("fs").readFileSync(".firebaserc","utf8"));
+  process.stdout.write(rc.projects && rc.projects.default ? rc.projects.default : "");
+} catch { process.stdout.write(""); }
+')
+
+if [ "$FIREBASERC_PROJECT" = "$PROJECT_ID" ]; then
+  echo "▸ Project $PROJECT_ID already exists (.firebaserc); skipping create"
+else
+  # New project — create it.
+  # Capture output first to avoid `set -o pipefail` flagging SIGPIPE when grep -q
+  # closes stdin early. Use --json for stable parsing across CLI versions.
+  PROJECT_LIST_JSON=$(firebase projects:list --json 2>/dev/null || true)
+  PROJECT_EXISTS=$(node -e '
 const data = JSON.parse(process.argv[1] || "{}");
 const ids = (data.result || []).map(p => p.projectId);
 process.stdout.write(ids.includes(process.argv[2]) ? "yes" : "no");
 ' "$PROJECT_LIST_JSON" "$PROJECT_ID")
 
-if [ "$PROJECT_EXISTS" = "yes" ]; then
-  echo "▸ Project $PROJECT_ID already exists; reusing"
-else
-  echo "▸ Creating Firebase project: $PROJECT_ID"
-  set +e
-  CREATE_OUTPUT=$(firebase projects:create "$PROJECT_ID" --display-name "$PROJECT_ID" 2>&1)
-  CREATE_EXIT=$?
-  set -e
-  echo "$CREATE_OUTPUT"
-  if [ $CREATE_EXIT -ne 0 ]; then
-    if echo "$CREATE_OUTPUT" | grep -q "PERMISSION_DENIED\|caller does not have permission"; then
-      echo "DEPLOY_TOOLKIT_SENTINEL:NEEDS_BOOTSTRAP"
+  if [ "$PROJECT_EXISTS" = "yes" ]; then
+    echo "▸ Project $PROJECT_ID already exists; reusing"
+  else
+    echo "▸ Creating Firebase project: $PROJECT_ID"
+    set +e
+    CREATE_OUTPUT=$(firebase projects:create "$PROJECT_ID" --display-name "$PROJECT_ID" 2>&1)
+    CREATE_EXIT=$?
+    set -e
+    echo "$CREATE_OUTPUT"
+    if [ $CREATE_EXIT -ne 0 ]; then
+      if echo "$CREATE_OUTPUT" | grep -q "PERMISSION_DENIED\|caller does not have permission"; then
+        echo "DEPLOY_TOOLKIT_SENTINEL:NEEDS_BOOTSTRAP"
+        exit $CREATE_EXIT
+      elif echo "$CREATE_OUTPUT" | grep -qi "already in use\|already exists"; then
+        echo "▸ Project $PROJECT_ID already exists; continuing"
+      else
+        exit $CREATE_EXIT
+      fi
     fi
-    exit $CREATE_EXIT
   fi
 fi
 
@@ -60,30 +76,26 @@ if [ "$NEEDS_DB" = "true" ] && [ ! -f firestore.rules ]; then
   echo "▸ Wrote default firestore.rules"
 fi
 
-# Pre-open the Firestore page on macOS so the user can create the actual
-# database while the rest of the deploy continues. Brand-new projects
-# need the user to pick a region + Production mode in the console once;
-# there's a Firebase CLI command for it
-# (`firebase firestore:databases:create`) but it requires picking the
-# region as a flag with no good default. Pre-opening keeps the choice
-# with the user, and the deploy stage's rules-deploy will still fail
-# loudly if the database isn't ready by then — the user can re-run.
-# REVISIT B6 captures the future fully-automated path.
-if [ "$NEEDS_DB" = "true" ] && [ "$(uname -s)" = "Darwin" ]; then
-  FIRESTORE_URL="https://console.firebase.google.com/project/$PROJECT_ID/firestore"
-  echo "▸ 📋 Your app needs a database. Opening Firebase Console so you can"
-  echo "    create it now while we keep working:"
-  echo "    $FIRESTORE_URL"
-  echo
-  echo "    What to click there:"
-  echo "      1. 'Create database'"
-  echo "      2. Pick any region (eur3 or us-central1 are fine)"
-  echo "      3. Start in 'Production mode' — we already wrote secure rules"
-  echo "      4. Wait ~30s for it to spin up"
-  echo
-  echo "    If you're not done by the time the deploy hits the database,"
-  echo "    we'll print a friendly retry message. The wizard waits for you."
-  open "$FIRESTORE_URL" >/dev/null 2>&1 || true
+# Explicitly create the Firestore database (idempotent — fails silently if
+# it already exists). The deploy stage enables the Firestore API, but
+# creating the database first avoids a race where deploy tries to upload
+# rules before the database exists.
+if [ "$NEEDS_DB" = "true" ]; then
+  echo "▸ Ensuring Firestore database exists…"
+  set +e
+  firebase firestore:databases:create \
+    --project "$PROJECT_ID" \
+    --location "us-central1" 2>&1 | grep -v "already exists" || true
+  set -e
 fi
+
+# Explicitly create the default Firebase Hosting site (idempotent).
+# `firebase deploy --only hosting` also enables Hosting on first run, but
+# doing it here means the site is ready before the build even starts.
+echo "▸ Ensuring Firebase Hosting site exists…"
+set +e
+firebase hosting:sites:create "$PROJECT_ID" \
+  --project "$PROJECT_ID" 2>&1 | grep -v "already exists" || true
+set -e
 
 echo "✓ Provisioning done"

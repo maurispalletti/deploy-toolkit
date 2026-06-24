@@ -115,10 +115,13 @@ npm install --loglevel=error \
 
 # ── 3. Configure Next.js for static export ───────────────────────────────────
 step "Configuring Next.js for static export"
-cat > next.config.ts << 'EOF'
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+# Write to next.config.mjs — Next.js 14 does not support next.config.ts
+# (TypeScript config support was added in Next.js 15). Remove the .ts stub
+# that create-next-app may have generated so there is no ambiguity.
+rm -f next.config.ts
+cat > next.config.mjs << 'EOF'
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   output: "export",
   images: { unoptimized: true },
 };
@@ -634,7 +637,7 @@ const fs = require('fs');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 pkg.scripts = {
   ...pkg.scripts,
-  build: 'next build && firebase deploy --only hosting,firestore',
+  build: 'next build',
 };
 fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 "

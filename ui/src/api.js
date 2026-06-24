@@ -72,6 +72,22 @@ export async function getExistingConfig(appDir) {
   return r.json();
 }
 
+export async function getResumeConfig(appDir) {
+  const r = await fetch(`/api/resume-config?appDir=${encodeURIComponent(appDir)}`);
+  if (!r.ok) throw new Error(`resume-config ${r.status}`);
+  return r.json();
+}
+
+export async function updatePlanFeatures(appDir, { addFirestore, addAuth }) {
+  const r = await fetch("/api/update-plan-features", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ appDir, addFirestore, addAuth }),
+  });
+  if (!r.ok) throw new Error(`update-plan-features ${r.status}`);
+  return r.json();
+}
+
 // Writes REFACTOR-FOR-FIREBASE.md into the app folder using the detection
 // output from the most recent inspect() call. Returns { path } on success.
 export async function generateDbRefactorPrompt(appDir, inspection) {

@@ -8,6 +8,7 @@ const STAGES = {
   provision: "stages/provision.sh",
   "inject-secrets": "stages/inject-secrets.sh",
   "inject-auth": "stages/inject-auth.sh",
+  "restore-env": "stages/restore-env.sh",
   build: "stages/build.sh",
   deploy: "stages/deploy.sh",
   report: "stages/report.sh",

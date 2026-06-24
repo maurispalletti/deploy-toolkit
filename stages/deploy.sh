@@ -25,7 +25,7 @@ TARGETS="hosting"
 echo "▸ Deploying targets: $TARGETS"
 
 set +e
-DEPLOY_OUTPUT=$(firebase deploy --only "$TARGETS" 2>&1)
+DEPLOY_OUTPUT=$(firebase deploy --only "$TARGETS" --project "$PROJECT_ID" 2>&1)
 DEPLOY_EXIT=$?
 set -e
 

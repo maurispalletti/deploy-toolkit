@@ -95,10 +95,43 @@ const SCRATCH_STEPS = [
   },
 ];
 
+const CONTINUE_STEPS = [
+  {
+    id: "setup",
+    label: "Setup",
+    desc: "Pick your project folder",
+    targetStep: 1,
+    internalSteps: [1],
+  },
+  {
+    id: "continue",
+    label: "Continue project",
+    desc: "Review your Firebase setup and add services",
+    targetStep: 20,
+    internalSteps: [20],
+  },
+  {
+    id: "deploy",
+    label: "Deploy",
+    desc: "Build and publish your app",
+    targetStep: 6,
+    internalSteps: [6, 8],
+  },
+  {
+    id: "done",
+    label: "Done",
+    desc: "Your app is live — grab the URL",
+    targetStep: 7,
+    internalSteps: [7],
+  },
+];
+
 export default function Sidebar({ flow, currentStep, onNavigate, folderReady }) {
-  // Always show the full list — default to existing-app path before the
-  // user has chosen so the whole journey is visible from the start.
-  const steps = flow === "scratch" ? SCRATCH_STEPS : EXISTING_STEPS;
+  const steps = flow === "scratch"
+    ? SCRATCH_STEPS
+    : flow === "continue"
+    ? CONTINUE_STEPS
+    : EXISTING_STEPS;
 
   const activeIndex = steps.findIndex(s => s.internalSteps.includes(currentStep));
   const safeActive  = activeIndex >= 0 ? activeIndex : 0;
