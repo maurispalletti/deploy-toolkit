@@ -39,6 +39,11 @@ export async function postLogin() {
   return r.json();
 }
 
+export async function postFirebaseLogout() {
+  const r = await fetch("/api/firebase-logout", { method: "POST" });
+  return r.json();
+}
+
 export async function postGhLogin() {
   const r = await fetch("/api/gh-login", { method: "POST" });
   return r.json();

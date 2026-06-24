@@ -3,7 +3,7 @@ import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
 import BackButton from "../components/BackButton.jsx";
 import StatusRow from "../components/StatusRow.jsx";
-import { getPreflight, postLogin, postGhLogin, postSetupDevTools } from "../api.js";
+import { getPreflight, postLogin, postFirebaseLogout, postGhLogin, postSetupDevTools } from "../api.js";
 
 const DEV_TOOLS = [
   {
@@ -154,9 +154,9 @@ export default function Prerequisites({ onBack, onNext }) {
             }}>Sign in</a>
           ) : state?.login?.ok ? (
             <a className="link" style={{ cursor: "pointer" }} onClick={async () => {
-              await postLogin();
-              setLoginPolling(true);
-            }}>Use a different account</a>
+              await postFirebaseLogout();
+              await check();
+            }}>Sign out</a>
           ) : null
         }
       />
