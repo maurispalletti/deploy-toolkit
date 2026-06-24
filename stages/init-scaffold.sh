@@ -541,15 +541,21 @@ fi
 info "Web app ID: $APP_ID"
 
 firebase apps:sdkconfig "$APP_ID" \
-  --project "$PROJECT_NAME" --json >/tmp/dt_sdk_config.json 2>/dev/null \
-  || echo '{}' >/tmp/dt_sdk_config.json
+  --project "$PROJECT_NAME" --json >/tmp/dt_sdk_config.json 2>/tmp/dt_sdk_config_err.json \
+  || true
+
+info "SDK config raw output:"
+cat /tmp/dt_sdk_config.json
 
 node -e "
 const fs = require('fs');
 let d=''; process.stdin.on('data',c=>d+=c);
 process.stdin.on('end',()=>{
   try {
-    const c = JSON.parse(d).result?.sdkConfig || {};
+    const parsed = JSON.parse(d);
+    const r = parsed.result || {};
+    // Firebase CLI v11+ nests under sdkConfig; older versions use result directly
+    const c = (r.sdkConfig && Object.keys(r.sdkConfig).length) ? r.sdkConfig : r;
     fs.writeFileSync('.env.local', [
       'NEXT_PUBLIC_FIREBASE_API_KEY='              + (c.apiKey             || ''),
       'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN='         + (c.authDomain         || ''),
