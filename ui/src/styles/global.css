@@ -103,6 +103,9 @@ body {
 .sidebar-step.done    { cursor: pointer; }
 .sidebar-step.done:hover { background: var(--bg-2); }
 .sidebar-step.active  { background: rgba(255,160,0,.07); }
+.sidebar-step.unlocked { cursor: pointer; }
+.sidebar-step.unlocked:hover { background: var(--bg-2); }
+.sidebar-step.unlocked .sidebar-step-label { color: var(--text); }
 .sidebar-num {
   width: 20px;
   height: 20px;

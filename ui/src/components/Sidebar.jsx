@@ -95,7 +95,7 @@ const SCRATCH_STEPS = [
   },
 ];
 
-export default function Sidebar({ flow, currentStep, onNavigate }) {
+export default function Sidebar({ flow, currentStep, onNavigate, folderReady }) {
   // Always show the full list — default to existing-app path before the
   // user has chosen so the whole journey is visible from the start.
   const steps = flow === "scratch" ? SCRATCH_STEPS : EXISTING_STEPS;
@@ -127,14 +127,17 @@ export default function Sidebar({ flow, currentStep, onNavigate }) {
         {steps.map((s, i) => {
           const isDone   = i < safeActive;
           const isActive = i === safeActive;
+          // "open" step is always reachable once the project folder exists
+          const isUnlocked = s.id === "open" && folderReady;
+          const isClickable = isDone || isUnlocked;
           const status   = isDone ? "done" : isActive ? "active" : "pending";
           return (
             <button
               key={s.id}
-              className={`sidebar-step ${status}`}
-              onClick={() => isDone && onNavigate(s.targetStep)}
-              disabled={!isDone && !isActive}
-              title={isDone ? `Go back to ${s.label}` : undefined}
+              className={`sidebar-step ${status}${isUnlocked && !isDone && !isActive ? " unlocked" : ""}`}
+              onClick={() => isClickable && onNavigate(s.targetStep)}
+              disabled={!isClickable && !isActive}
+              title={isDone ? `Go back to ${s.label}` : isUnlocked ? `Open in editor` : undefined}
             >
               <div className={`sidebar-num ${status}`}>
                 {isDone ? "✓" : i + 1}

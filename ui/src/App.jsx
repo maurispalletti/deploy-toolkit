@@ -73,6 +73,9 @@ export default function App() {
   const [scratchAppDir, setScratchAppDir] = useState("");
   const [scratchRepoUrl, setScratchRepoUrl] = useState("");
   const [flow, setFlow] = useState("unknown"); // "unknown" | "existing" | "scratch"
+  // Tracks which step the user was on before jumping to step 18 mid-flow.
+  // null means step 18 was reached naturally at the end of step 17.
+  const [openInIDEFrom, setOpenInIDEFrom] = useState(null);
 
   useEffect(() => {
     getAppDir().then((d) => {
@@ -106,13 +109,23 @@ export default function App() {
     setScratchAppDir("");
     setScratchRepoUrl("");
     setFlow("unknown");
+    setOpenInIDEFrom(null);
   }
 
   if (!loaded) return <div className="container">Loading…</div>;
 
   return (
     <div className="wizard-root">
-      <Sidebar flow={flow} currentStep={step} onNavigate={setStep} />
+      <Sidebar
+        flow={flow}
+        currentStep={step}
+        folderReady={!!scratchAppDir}
+        onNavigate={(targetStep) => {
+          if (targetStep === 18 && step !== 17) setOpenInIDEFrom(step);
+          else setOpenInIDEFrom(null);
+          setStep(targetStep);
+        }}
+      />
       <div className="wizard-content page-enter" key={step}>
       {step === 1 && (
         <Welcome
@@ -292,8 +305,13 @@ export default function App() {
         <OpenInIDE
           appDir={scratchAppDir}
           onDone={() => {
-            setAppDir(scratchAppDir);
-            resetWizard();
+            if (openInIDEFrom !== null) {
+              setStep(openInIDEFrom);
+              setOpenInIDEFrom(null);
+            } else {
+              setAppDir(scratchAppDir);
+              resetWizard();
+            }
           }}
         />
       )}
