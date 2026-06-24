@@ -29,28 +29,21 @@ export default function OpenInIDE({ appDir, onDone }) {
             key={id}
             onClick={() => open(id)}
             style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "12px 16px",
+              padding: "10px 16px",
               border: "1px solid var(--border)",
               borderRadius: 8,
-              background: opened === id ? "var(--accent, #f0fdf4)" : "transparent",
+              background: "#fff",
+              color: "#111",
               cursor: "pointer",
               fontSize: 14,
               fontWeight: 500,
               textAlign: "left",
-              transition: "background 0.15s",
+              transition: "border-color 0.15s",
+              outline: opened === id ? "2px solid var(--green, #16a34a)" : "none",
+              outlineOffset: 1,
             }}
           >
-            <span style={{
-              width: 20,
-              textAlign: "center",
-              color: opened === id ? "var(--green, #16a34a)" : "var(--muted-fg, #888)",
-            }}>
-              {opened === id ? "✓" : "→"}
-            </span>
-            Open in {label}
+            {opened === id ? "✓ " : ""}{label}
           </button>
         ))}
       </div>
