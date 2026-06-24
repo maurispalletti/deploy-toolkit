@@ -503,73 +503,7 @@ export default function RootLayout({
 }
 EOF
 
-# ── 8. Firebase web app + SDK config → .env.local ────────────────────────────
-step "Creating Firebase web app and fetching SDK config"
-set +e
-firebase apps:create web "$PROJECT_NAME" \
-  --project "$PROJECT_NAME" --json >/tmp/dt_create_app.json 2>/dev/null
-set -e
-
-# Parse via stdin to avoid all shell-quoting and argv-index issues.
-APP_ID=$(node -e "
-let d=''; process.stdin.on('data',c=>d+=c);
-process.stdin.on('end',()=>{
-  try { process.stdout.write(JSON.parse(d).result?.appId||''); }
-  catch { process.stdout.write(''); }
-});
-" </tmp/dt_create_app.json 2>/dev/null || true)
-
-if [ -z "$APP_ID" ]; then
-  info "Checking for existing web app…"
-  firebase apps:list WEB --project "$PROJECT_NAME" --json \
-    >/tmp/dt_apps_list.json 2>/dev/null || echo '{}' >/tmp/dt_apps_list.json
-  APP_ID=$(node -e "
-let d=''; process.stdin.on('data',c=>d+=c);
-process.stdin.on('end',()=>{
-  try { process.stdout.write((JSON.parse(d).result||[])[0]?.appId||''); }
-  catch { process.stdout.write(''); }
-});
-" </tmp/dt_apps_list.json 2>/dev/null || true)
-fi
-
-if [ -z "$APP_ID" ]; then
-  toolkit_error "FIREBASE_APP_MISSING" \
-    "Could not create or find a Firebase web app for project '$PROJECT_NAME'."
-  exit 1
-fi
-
-info "Web app ID: $APP_ID"
-
-firebase apps:sdkconfig "$APP_ID" \
-  --project "$PROJECT_NAME" --json >/tmp/dt_sdk_config.json 2>/tmp/dt_sdk_config_err.json \
-  || true
-
-info "SDK config raw output:"
-cat /tmp/dt_sdk_config.json
-
-node -e "
-const fs = require('fs');
-let d=''; process.stdin.on('data',c=>d+=c);
-process.stdin.on('end',()=>{
-  try {
-    const parsed = JSON.parse(d);
-    const r = parsed.result || {};
-    // Firebase CLI v11+ nests under sdkConfig; older versions use result directly
-    const c = (r.sdkConfig && Object.keys(r.sdkConfig).length) ? r.sdkConfig : r;
-    fs.writeFileSync('.env.local', [
-      'NEXT_PUBLIC_FIREBASE_API_KEY='              + (c.apiKey             || ''),
-      'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN='         + (c.authDomain         || ''),
-      'NEXT_PUBLIC_FIREBASE_PROJECT_ID='          + (c.projectId          || ''),
-      'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET='      + (c.storageBucket      || ''),
-      'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=' + (c.messagingSenderId  || ''),
-      'NEXT_PUBLIC_FIREBASE_APP_ID='              + (c.appId              || ''),
-    ].join('\n') + '\n');
-    console.log('  Wrote .env.local');
-  } catch (e) { console.error('  Warning: could not parse SDK config:', e.message); }
-});
-" </tmp/dt_sdk_config.json
-
-# ── 9. Firestore database + rules ─────────────────────────────────────────────
+# ── 8. Firestore database + rules ─────────────────────────────────────────────
 step "Setting up Firestore"
 
 # Firestore security rules — greetings are private per user

@@ -54,4 +54,82 @@ else
 fi
 
 echo "✓ Firebase project ready"
+
+# ── Create Firebase web app + write .env.local ─────────────────────────────
+step "Creating Firebase web app"
+firebase apps:create web "$PROJECT_NAME" \
+  --project "$PROJECT_NAME" --json >/tmp/dt_create_app.json 2>/dev/null || true
+
+APP_ID=$(node -e "
+let d=''; process.stdin.on('data',c=>d+=c);
+process.stdin.on('end',()=>{
+  try { process.stdout.write(JSON.parse(d).result?.appId||''); }
+  catch { process.stdout.write(''); }
+});
+" </tmp/dt_create_app.json 2>/dev/null || true)
+
+if [ -z "$APP_ID" ]; then
+  info "Checking for existing web app…"
+  firebase apps:list WEB --project "$PROJECT_NAME" --json \
+    >/tmp/dt_apps_list.json 2>/dev/null || echo '{}' >/tmp/dt_apps_list.json
+  APP_ID=$(node -e "
+let d=''; process.stdin.on('data',c=>d+=c);
+process.stdin.on('end',()=>{
+  try { process.stdout.write((JSON.parse(d).result||[])[0]?.appId||''); }
+  catch { process.stdout.write(''); }
+});
+" </tmp/dt_apps_list.json 2>/dev/null || true)
+fi
+
+if [ -n "$APP_ID" ]; then
+  info "Web app ID: $APP_ID"
+  step "Writing .env.local"
+  # Fetch SDK config — try JSON first, fall back to parsing the JS snippet
+  firebase apps:sdkconfig "$APP_ID" \
+    --project "$PROJECT_NAME" --json >/tmp/dt_sdk.json 2>/dev/null || true
+  firebase apps:sdkconfig "$APP_ID" \
+    --project "$PROJECT_NAME"        >/tmp/dt_sdk.txt  2>/dev/null || true
+
+  node -e "
+const fs = require('fs');
+function extract(txt, key) {
+  const m = txt.match(new RegExp(key + '['\''\":\\s]+([^'\''\",}\\s]+)'));
+  return m ? m[1] : '';
+}
+let c = {};
+// Try JSON first
+try {
+  const raw = fs.readFileSync('/tmp/dt_sdk.json','utf8');
+  const parsed = JSON.parse(raw);
+  const r = parsed.result || {};
+  c = (r.sdkConfig && r.sdkConfig.apiKey) ? r.sdkConfig : r;
+} catch {}
+// If JSON gave us nothing, parse the JS snippet
+if (!c.apiKey) {
+  try {
+    const txt = fs.readFileSync('/tmp/dt_sdk.txt','utf8');
+    c = {
+      apiKey:            extract(txt,'apiKey'),
+      authDomain:        extract(txt,'authDomain'),
+      projectId:         extract(txt,'projectId'),
+      storageBucket:     extract(txt,'storageBucket'),
+      messagingSenderId: extract(txt,'messagingSenderId'),
+      appId:             extract(txt,'appId'),
+    };
+  } catch {}
+}
+fs.writeFileSync('$APP_DIR/.env.local', [
+  'NEXT_PUBLIC_FIREBASE_API_KEY='              + (c.apiKey             || ''),
+  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN='         + (c.authDomain         || ''),
+  'NEXT_PUBLIC_FIREBASE_PROJECT_ID='          + (c.projectId          || ''),
+  'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET='      + (c.storageBucket      || ''),
+  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=' + (c.messagingSenderId  || ''),
+  'NEXT_PUBLIC_FIREBASE_APP_ID='              + (c.appId              || ''),
+].join('\n') + '\n');
+console.log('  Wrote .env.local');
+"
+else
+  info "Warning: could not create Firebase web app — .env.local will be written during scaffold"
+fi
+
 printf "DEPLOY_TOOLKIT_FIREBASE_DONE:%s\n" "$APP_DIR"
