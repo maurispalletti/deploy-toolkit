@@ -6,10 +6,12 @@ Run each step below in sequence:
 
 For each tool below, if it is **already installed** run the update command; if it is **not installed** run the install command:
 
-- **homebrew**
+- **homebrew** ⚠️ runs as sudo
   - check: `brew --version`
-  - install: `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/homebrew/install/HEAD/install.sh)"`
+  - install: `sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/homebrew/install/HEAD/install.sh)"`
   - update: `brew update && brew upgrade`
+
+All remaining tools run with regular user permissions (no sudo):
 
 - **git**
   - check: `git --version`
