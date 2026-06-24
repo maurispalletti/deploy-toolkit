@@ -504,30 +504,30 @@ EOF
 # ── 8. Firebase web app + SDK config → .env.local ────────────────────────────
 step "Creating Firebase web app and fetching SDK config"
 set +e
-CREATE_APP_JSON=$(firebase apps:create web "$PROJECT_NAME" \
-  --project "$PROJECT_NAME" --json 2>/dev/null)
-CREATE_EXIT=$?
+firebase apps:create web "$PROJECT_NAME" \
+  --project "$PROJECT_NAME" --json >/tmp/dt_create_app.json 2>/dev/null
 set -e
 
-APP_ID=""
-# Try the create output first (works on first run and when firebase echoes
-# back the existing app on conflict). Falls through to apps:list on retry.
+# Parse via stdin to avoid all shell-quoting and argv-index issues.
 APP_ID=$(node -e "
-try {
-  const d = JSON.parse(process.argv[2]);
-  process.stdout.write(d.result?.appId || '');
-} catch { process.stdout.write(''); }
-" "$CREATE_APP_JSON" 2>/dev/null || true)
+let d=''; process.stdin.on('data',c=>d+=c);
+process.stdin.on('end',()=>{
+  try { process.stdout.write(JSON.parse(d).result?.appId||''); }
+  catch { process.stdout.write(''); }
+});
+" </tmp/dt_create_app.json 2>/dev/null || true)
 
 if [ -z "$APP_ID" ]; then
   info "Checking for existing web app…"
-  APPS_JSON=$(firebase apps:list WEB --project "$PROJECT_NAME" --json 2>/dev/null || echo '{}')
+  firebase apps:list WEB --project "$PROJECT_NAME" --json \
+    >/tmp/dt_apps_list.json 2>/dev/null || echo '{}' >/tmp/dt_apps_list.json
   APP_ID=$(node -e "
-try {
-  const d = JSON.parse(process.argv[2]);
-  process.stdout.write((d.result || [])[0]?.appId || '');
-} catch { process.stdout.write(''); }
-" "$APPS_JSON" 2>/dev/null || true)
+let d=''; process.stdin.on('data',c=>d+=c);
+process.stdin.on('end',()=>{
+  try { process.stdout.write((JSON.parse(d).result||[])[0]?.appId||''); }
+  catch { process.stdout.write(''); }
+});
+" </tmp/dt_apps_list.json 2>/dev/null || true)
 fi
 
 if [ -z "$APP_ID" ]; then
@@ -538,26 +538,28 @@ fi
 
 info "Web app ID: $APP_ID"
 
-SDK_JSON=$(firebase apps:sdkconfig "$APP_ID" \
-  --project "$PROJECT_NAME" --json 2>/dev/null || echo '{}')
+firebase apps:sdkconfig "$APP_ID" \
+  --project "$PROJECT_NAME" --json >/tmp/dt_sdk_config.json 2>/dev/null \
+  || echo '{}' >/tmp/dt_sdk_config.json
 
 node -e "
 const fs = require('fs');
-try {
-  const d = JSON.parse(process.argv[2]);
-  const c = d.result?.sdkConfig || {};
-  const lines = [
-    'NEXT_PUBLIC_FIREBASE_API_KEY='              + (c.apiKey             || ''),
-    'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN='         + (c.authDomain         || ''),
-    'NEXT_PUBLIC_FIREBASE_PROJECT_ID='          + (c.projectId          || ''),
-    'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET='      + (c.storageBucket      || ''),
-    'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=' + (c.messagingSenderId  || ''),
-    'NEXT_PUBLIC_FIREBASE_APP_ID='              + (c.appId              || ''),
-  ];
-  fs.writeFileSync('.env.local', lines.join('\n') + '\n');
-  console.log('  Wrote .env.local');
-} catch (e) { console.error('  Warning: could not parse SDK config:', e.message); }
-" "$SDK_JSON"
+let d=''; process.stdin.on('data',c=>d+=c);
+process.stdin.on('end',()=>{
+  try {
+    const c = JSON.parse(d).result?.sdkConfig || {};
+    fs.writeFileSync('.env.local', [
+      'NEXT_PUBLIC_FIREBASE_API_KEY='              + (c.apiKey             || ''),
+      'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN='         + (c.authDomain         || ''),
+      'NEXT_PUBLIC_FIREBASE_PROJECT_ID='          + (c.projectId          || ''),
+      'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET='      + (c.storageBucket      || ''),
+      'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=' + (c.messagingSenderId  || ''),
+      'NEXT_PUBLIC_FIREBASE_APP_ID='              + (c.appId              || ''),
+    ].join('\n') + '\n');
+    console.log('  Wrote .env.local');
+  } catch (e) { console.error('  Warning: could not parse SDK config:', e.message); }
+});
+" </tmp/dt_sdk_config.json
 
 # ── 9. Firestore database + rules ─────────────────────────────────────────────
 step "Setting up Firestore"
