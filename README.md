@@ -83,6 +83,91 @@ deploy-toolkit/
 └── docs/                      user guide, how it works, design backlog
 ```
 
+### Fresh laptop setup
+
+Got a new Mac and want to get everything in one shot? Paste the block below into [Claude](https://claude.ai) and it will install and/or update every tool you need, log you in to GitHub and Firebase, and clone this repo into `~/Documents/deploy-toolkit`.
+
+<details>
+<summary>Click to expand the setup prompt</summary>
+
+```
+Check and install all required CLI tools, then ensure the user is authenticated with GitHub CLI and Firebase CLI.
+
+Run each step below in sequence:
+
+## 1. Install or update all tools
+
+For each tool below, if it is **already installed** run the update command; if it is **not installed** run the install command:
+
+- **homebrew** ⚠️ runs as sudo
+  - check: `brew --version`
+  - install: `sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/homebrew/install/HEAD/install.sh)"`
+  - update: `brew update && brew upgrade`
+
+All remaining tools run with regular user permissions (no sudo):
+
+- **git**
+  - check: `git --version`
+  - install: `brew install git`
+  - update: `brew upgrade git`
+
+- **gh**
+  - check: `gh --version`
+  - install: `brew install gh`
+  - update: `brew upgrade gh`
+
+- **node**
+  - check: `node --version`
+  - install: `brew install node`
+  - update: `brew upgrade node`
+
+- **firebase**
+  - check: `firebase --version`
+  - install: `npm install -g firebase-tools`
+  - update: `npm update -g firebase-tools`
+
+Report each tool's status (updated / freshly installed / failed) and the version after the operation.
+
+## 2. Check GitHub CLI auth
+
+Run `gh auth status`. If the user is not logged in (exit code non-zero or output says "not logged in"), tell them to run:
+\`\`\`
+gh auth login
+\`\`\`
+and wait for them to confirm before continuing.
+
+## 3. Check Firebase CLI auth
+
+Run `firebase projects:list` (a lightweight authenticated call). If it fails with an auth error, tell the user to run:
+\`\`\`
+firebase login
+\`\`\`
+and wait for them to confirm they've completed the login before continuing.
+
+## 4. Clone the repository
+
+Check if `~/Documents/deploy-toolkit` already exists:
+
+- If it **does not exist**, clone it:
+  \`\`\`
+  git clone https://github.com/maurispalletti/deploy-toolkit ~/Documents/deploy-toolkit
+  \`\`\`
+- If it **already exists**, pull the latest changes instead:
+  \`\`\`
+  git -C ~/Documents/deploy-toolkit pull
+  \`\`\`
+
+Report whether the repo was freshly cloned or updated.
+
+## 5. Summary
+
+Print a table showing each tool's installed version, auth status, and whether the repo was cloned or updated.
+```
+
+</details>
+
+If you already have Claude Code installed, you can run `/setup` from inside this repo instead — it does the same thing.
+
 ### Running the tests
 
 ```bash
