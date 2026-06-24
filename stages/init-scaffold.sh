@@ -25,7 +25,9 @@ npx --yes create-next-app@14 "$TEMP_DIR" \
   --no-git \
   --yes 2>&1
 
-# Merge scaffold into app dir, preserving our .git
+# Merge scaffold into app dir, preserving our .git.
+# Wipe node_modules first so a retry doesn't leave a corrupt mixed state.
+rm -rf "$APP_DIR/node_modules"
 rsync -a --exclude='.git' "$TEMP_DIR/" "$APP_DIR/"
 rm -rf "$TEMP_DIR"
 
