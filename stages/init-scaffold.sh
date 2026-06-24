@@ -14,7 +14,7 @@ cd "$APP_DIR"
 
 # ── 1. Scaffold Next.js 14 into a temp dir, then copy over ───────────────────
 step "Scaffolding Next.js 14 (this takes a minute…)"
-TEMP_DIR="$(dirname "$APP_DIR")/.scaffold-$$"
+TEMP_DIR="$(dirname "$APP_DIR")/scaffold-tmp-$$"
 npx --yes create-next-app@14 "$TEMP_DIR" \
   --typescript \
   --tailwind \
