@@ -84,13 +84,18 @@ fi
 if [ -n "$APP_ID" ]; then
   info "Web app ID: $APP_ID"
   step "Writing .env.local"
-  # Fetch SDK config — try JSON first, fall back to parsing the JS snippet
+  # Capture both forms: --json and plain JS snippet (fallback)
+  # Redirect stderr to stdout so we see everything in the log
   firebase apps:sdkconfig "$APP_ID" \
-    --project "$PROJECT_NAME" --json >/tmp/dt_sdk.json 2>/dev/null || true
+    --project "$PROJECT_NAME" --json >/tmp/dt_sdk.json 2>&1 || true
   firebase apps:sdkconfig "$APP_ID" \
-    --project "$PROJECT_NAME"        >/tmp/dt_sdk.txt  2>/dev/null || true
+    --project "$PROJECT_NAME"        >/tmp/dt_sdk.txt  2>&1 || true
 
-  # Write the script to a temp file to avoid all shell-quoting headaches
+  info "--- sdkconfig JSON output ---"
+  cat /tmp/dt_sdk.json
+  info "--- sdkconfig plain output ---"
+  cat /tmp/dt_sdk.txt
+
   cat > /tmp/dt_write_env.js << 'JSEOF'
 const fs = require('fs');
 const appDir = process.argv[2];
@@ -101,17 +106,20 @@ function extract(txt, key) {
 }
 
 let c = {};
+let source = 'none';
+
 try {
   const raw = fs.readFileSync('/tmp/dt_sdk.json', 'utf8');
   const parsed = JSON.parse(raw);
   const r = parsed.result || {};
-  c = (r.sdkConfig && r.sdkConfig.apiKey) ? r.sdkConfig : r;
+  const candidate = (r.sdkConfig && r.sdkConfig.apiKey) ? r.sdkConfig : r;
+  if (candidate.apiKey) { c = candidate; source = 'json'; }
 } catch {}
 
 if (!c.apiKey) {
   try {
     const txt = fs.readFileSync('/tmp/dt_sdk.txt', 'utf8');
-    c = {
+    const candidate = {
       apiKey:            extract(txt, 'apiKey'),
       authDomain:        extract(txt, 'authDomain'),
       projectId:         extract(txt, 'projectId'),
@@ -119,8 +127,12 @@ if (!c.apiKey) {
       messagingSenderId: extract(txt, 'messagingSenderId'),
       appId:             extract(txt, 'appId'),
     };
+    if (candidate.apiKey) { c = candidate; source = 'plain'; }
   } catch {}
 }
+
+console.log('  SDK config source:', source);
+console.log('  apiKey found:', !!c.apiKey);
 
 fs.writeFileSync(appDir + '/.env.local', [
   'NEXT_PUBLIC_FIREBASE_API_KEY='              + (c.apiKey             || ''),

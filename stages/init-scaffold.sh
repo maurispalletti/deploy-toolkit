@@ -28,7 +28,7 @@ npx --yes create-next-app@14 "$TEMP_DIR" \
 # Merge scaffold into app dir, preserving our .git.
 # Wipe node_modules first so a retry doesn't leave a corrupt mixed state.
 rm -rf "$APP_DIR/node_modules"
-rsync -a --exclude='.git' "$TEMP_DIR/" "$APP_DIR/"
+rsync -a --exclude='.git' --exclude='.env.local' "$TEMP_DIR/" "$APP_DIR/"
 rm -rf "$TEMP_DIR"
 
 # Fix package name (create-next-app uses the dir name)
