@@ -10,7 +10,7 @@ export default function Questions({ appDir, inspection, defaults, onBack, onNext
   const folder = appDir
     ? appDir.replace(/\\/g, "/").split("/").filter(Boolean).at(-1) ?? ""
     : "";
-  const [appName, setAppName] = useState(defaults?.appName ?? inspection?.pkgName ?? folder || "my-app");
+  const [appName, setAppName] = useState((defaults?.appName ?? inspection?.pkgName ?? folder) || "my-app");
   const [needsAuth, setNeedsAuth] = useState(defaults?.needsAuth ? "yes" : "no");
   const [needsDb, setNeedsDb] = useState(defaults?.needsDb ? "yes" : "no");
 
