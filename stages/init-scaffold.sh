@@ -33,7 +33,7 @@ rm -rf "$TEMP_DIR"
 node -e "
 const fs = require('fs');
 const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-pkg.name = process.argv[1];
+pkg.name = process.argv[2];
 fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 " "$PROJECT_NAME"
 
@@ -510,14 +510,14 @@ CREATE_EXIT=$?
 set -e
 
 APP_ID=""
-if [ $CREATE_EXIT -eq 0 ]; then
-  APP_ID=$(node -e "
+# Try the create output first (works on first run and when firebase echoes
+# back the existing app on conflict). Falls through to apps:list on retry.
+APP_ID=$(node -e "
 try {
   const d = JSON.parse(process.argv[2]);
   process.stdout.write(d.result?.appId || '');
 } catch { process.stdout.write(''); }
-" -- "$CREATE_APP_JSON")
-fi
+" "$CREATE_APP_JSON" 2>/dev/null || true)
 
 if [ -z "$APP_ID" ]; then
   info "Checking for existing web app…"
@@ -527,7 +527,7 @@ try {
   const d = JSON.parse(process.argv[2]);
   process.stdout.write((d.result || [])[0]?.appId || '');
 } catch { process.stdout.write(''); }
-" -- "$APPS_JSON")
+" "$APPS_JSON" 2>/dev/null || true)
 fi
 
 if [ -z "$APP_ID" ]; then
@@ -557,7 +557,7 @@ try {
   fs.writeFileSync('.env.local', lines.join('\n') + '\n');
   console.log('  Wrote .env.local');
 } catch (e) { console.error('  Warning: could not parse SDK config:', e.message); }
-" -- "$SDK_JSON"
+" "$SDK_JSON"
 
 # ── 9. Firestore database + rules ─────────────────────────────────────────────
 step "Setting up Firestore"
@@ -617,7 +617,7 @@ node -e "
 const fs = require('fs');
 fs.writeFileSync(
   '.firebaserc',
-  JSON.stringify({ projects: { default: process.argv[1] } }, null, 2) + '\n'
+  JSON.stringify({ projects: { default: process.argv[2] } }, null, 2) + '\n'
 );
 " "$PROJECT_NAME"
 
