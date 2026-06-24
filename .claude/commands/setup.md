@@ -51,6 +51,21 @@ firebase login
 ```
 and wait for them to confirm they've completed the login before continuing.
 
-## 4. Summary
+## 4. Clone the repository
 
-Print a table showing each tool's installed version and auth status.
+Check if `~/Documents/deploy-toolkit` already exists:
+
+- If it **does not exist**, clone it:
+  ```
+  git clone https://github.com/maurispalletti/deploy-toolkit ~/Documents/deploy-toolkit
+  ```
+- If it **already exists**, pull the latest changes instead:
+  ```
+  git -C ~/Documents/deploy-toolkit pull
+  ```
+
+Report whether the repo was freshly cloned or updated.
+
+## 5. Summary
+
+Print a table showing each tool's installed version, auth status, and whether the repo was cloned or updated.
