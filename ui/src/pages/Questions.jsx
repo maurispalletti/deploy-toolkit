@@ -1,15 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
 import BackButton from "../components/BackButton.jsx";
 import RadioRow from "../components/RadioRow.jsx";
+import { getFirebaseProjects } from "../api.js";
 
 const yesNo = [{value:"yes",label:"Yes"},{value:"no",label:"No"}];
 
-export default function Questions({ inspection, defaults, onBack, onNext }) {
-  const [appName, setAppName] = useState(defaults?.appName ?? inspection?.pkgName ?? "my-app");
+function folderName(appDir) {
+  if (!appDir) return "";
+  return appDir.replace(/\\/g, "/").split("/").filter(Boolean).at(-1) ?? "";
+}
+
+export default function Questions({ appDir, inspection, defaults, onBack, onNext }) {
+  const folder = folderName(appDir);
+  const [appName, setAppName] = useState(defaults?.appName ?? inspection?.pkgName ?? folder || "my-app");
   const [needsAuth, setNeedsAuth] = useState(defaults?.needsAuth ? "yes" : "no");
   const [needsDb, setNeedsDb] = useState(defaults?.needsDb ? "yes" : "no");
+  const [existingProject, setExistingProject] = useState(defaults?.existingProject ?? false);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!folder) { setProjectsLoaded(true); return; }
+    getFirebaseProjects().then(({ projectIds }) => {
+      const match = projectIds.some(id => id.toLowerCase() === folder.toLowerCase());
+      if (match) {
+        setExistingProject(true);
+        setAppName(folder);
+      }
+      setProjectsLoaded(true);
+    }).catch(() => setProjectsLoaded(true));
+  }, [folder]);
 
   function submit() {
     const shape = inspection.suggestedShape === "C"
@@ -21,6 +42,7 @@ export default function Questions({ inspection, defaults, onBack, onNext }) {
       needsDb: needsDb === "yes",
       shape,
       secretKeys: inspection.envKeys || [],
+      existingProject,
     });
   }
 
@@ -31,11 +53,22 @@ export default function Questions({ inspection, defaults, onBack, onNext }) {
     >
       <div className="field">
         <label>What should we call your app?</label>
-        <input type="text" value={appName} onChange={e => setAppName(e.target.value)} />
-        <div className="help">
-          This becomes part of your web address: <code className="codepath">{appName || "my-app"}-xxxx.web.app</code>.
-          We add a few random letters at the end so it's unique on Firebase.
-        </div>
+        {existingProject ? (
+          <>
+            <input type="text" value={appName} readOnly style={{ opacity: 0.6, cursor: "default" }} />
+            <div className="help">
+              We found an existing Firebase project <code className="codepath">{appName}</code> that matches this folder. We'll deploy to it instead of creating a new one.
+            </div>
+          </>
+        ) : (
+          <>
+            <input type="text" value={appName} onChange={e => setAppName(e.target.value)} disabled={!projectsLoaded} />
+            <div className="help">
+              This becomes part of your web address: <code className="codepath">{appName || "my-app"}-xxxx.web.app</code>.
+              We add a few random letters at the end so it's unique on Firebase.
+            </div>
+          </>
+        )}
       </div>
 
       <div className="field">
@@ -60,7 +93,7 @@ export default function Questions({ inspection, defaults, onBack, onNext }) {
 
       <div className="btn-row split">
         <BackButton onClick={onBack} />
-        <Button onClick={submit}>Continue</Button>
+        <Button onClick={submit} disabled={!projectsLoaded}>Continue</Button>
       </div>
     </Card>
   );

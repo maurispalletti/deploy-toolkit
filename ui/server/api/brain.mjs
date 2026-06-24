@@ -1,6 +1,6 @@
 import { writeFile, unlink, readFile, access } from "node:fs/promises";
 import { join, basename } from "node:path";
-import { execSync } from "node:child_process";
+import { execSync, execFileSync } from "node:child_process";
 import { inspect } from "../../../lib/inspector/index.mjs";
 import { plan } from "../../../lib/planner/index.mjs";
 import { fetchWebSdkConfig } from "../../../lib/sdk-config.mjs";
@@ -67,6 +67,17 @@ export function mountBrain(app) {
   app.post("/api/plan", async (req, res) => {
     try { res.json(await planApp(req.body.appDir, req.body.answers)); }
     catch (err) { res.status(500).json({ error: err.message }); }
+  });
+
+  app.get("/api/firebase-projects", async (_req, res) => {
+    try {
+      const raw = execFileSync("firebase", ["projects:list", "--json"], { encoding: "utf8", timeout: 15000 });
+      const parsed = JSON.parse(raw);
+      const ids = (parsed.result ?? []).map(p => p.projectId).filter(Boolean);
+      res.json({ projectIds: ids });
+    } catch {
+      res.json({ projectIds: [] });
+    }
   });
 
   app.get("/api/existing-config", async (req, res) => {

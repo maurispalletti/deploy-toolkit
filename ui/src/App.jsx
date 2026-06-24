@@ -169,6 +169,7 @@ export default function App() {
       }} />}
       {step === 4 && (
         <Questions
+          appDir={appDir}
           inspection={inspection}
           defaults={answers}
           onBack={back}

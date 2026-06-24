@@ -67,6 +67,12 @@ export async function postQuit() {
   try { await fetch("/api/quit", { method: "POST" }); } catch {}
 }
 
+export async function getFirebaseProjects() {
+  const r = await fetch("/api/firebase-projects");
+  if (!r.ok) return { projectIds: [] };
+  return r.json();
+}
+
 export async function getExistingConfig(appDir) {
   const r = await fetch(`/api/existing-config?appDir=${encodeURIComponent(appDir)}`);
   return r.json();
