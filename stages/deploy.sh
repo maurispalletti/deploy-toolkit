@@ -25,11 +25,10 @@ try {
 } catch {}
 process.stdout.write(path.basename(dir));
 ' "$APP_DIR")
-NEEDS_DB=$(node -p "require('./deploy-app.config.json').firestore !== null")
 NEEDS_FN=$(node -p "require('./deploy-app.config.json').functions !== null")
 
-TARGETS="hosting"
-[ "$NEEDS_DB" = "true" ] && TARGETS="$TARGETS,firestore"
+# Firestore is always deployed; functions only when configured.
+TARGETS="hosting,firestore"
 [ "$NEEDS_FN" = "true" ] && TARGETS="$TARGETS,functions"
 
 echo "▸ Deploying targets: $TARGETS"

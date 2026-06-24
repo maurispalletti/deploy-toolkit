@@ -9,8 +9,6 @@ TOOLKIT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 [ -f "$CONFIG" ] || { echo "✗ Missing $CONFIG"; exit 1; }
 
-NEEDS_DB=$(node -p "require('$CONFIG').firestore !== null")
-
 cd "$APP_DIR"
 
 # Resolve project ID: .firebaserc (most authoritative) → folder name.
@@ -75,33 +73,36 @@ fi
 # Set as the active project
 echo "{\"projects\":{\"default\":\"$PROJECT_ID\"}}" > .firebaserc
 
-# Generate firebase.json based on shape
+# Generate firebase.json — Firestore and Hosting always included.
 node -e "
 const cfg = require('$CONFIG');
 const fs = require('fs');
 const obj = { hosting: { public: cfg.hosting.publicDir, ignore: ['firebase.json','**/.*','**/node_modules/**'], rewrites: cfg.hosting.rewrites } };
-if (cfg.firestore) obj.firestore = { rules: 'firestore.rules' };
+obj.firestore = { rules: 'firestore.rules' };
 if (cfg.functions) obj.functions = [{ source: cfg.functions.dir, codebase: 'default' }];
 fs.writeFileSync('firebase.json', JSON.stringify(obj, null, 2));
 "
 
-# Copy default firestore rules if needed and not present
-if [ "$NEEDS_DB" = "true" ] && [ ! -f firestore.rules ]; then
+# Always ensure firestore.rules exists.
+if [ ! -f firestore.rules ]; then
   cp "$TOOLKIT_DIR/templates/firestore.rules" firestore.rules
   echo "▸ Wrote default firestore.rules"
 fi
 
-# Explicitly create the Firestore database (idempotent — fails silently if
-# it already exists). The deploy stage enables the Firestore API, but
-# creating the database first avoids a race where deploy tries to upload
-# rules before the database exists.
-if [ "$NEEDS_DB" = "true" ]; then
-  echo "▸ Ensuring Firestore database exists…"
+# Check if Firestore database exists; create it if not.
+echo "▸ Checking Firestore database…"
+set +e
+DB_LIST=$(firebase firestore:databases:list --project "$PROJECT_ID" 2>&1)
+set -e
+if echo "$DB_LIST" | grep -q "No databases found"; then
+  echo "▸ Firestore not enabled — creating database…"
   set +e
   firebase firestore:databases:create \
     --project "$PROJECT_ID" \
-    --location "us-central1" 2>&1 | grep -v "already exists" || true
+    --location "us-central1" 2>&1
   set -e
+else
+  echo "▸ Firestore database already exists"
 fi
 
 # Explicitly create the default Firebase Hosting site (idempotent).
