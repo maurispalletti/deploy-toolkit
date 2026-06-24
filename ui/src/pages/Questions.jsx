@@ -13,13 +13,12 @@ export default function Questions({ appDir, inspection, defaults, onBack, onNext
   const [appName, setAppName] = useState(defaults?.appName ?? inspection?.pkgName ?? folder || "my-app");
   const [needsAuth, setNeedsAuth] = useState(defaults?.needsAuth ? "yes" : "no");
   const [needsDb, setNeedsDb] = useState(defaults?.needsDb ? "yes" : "no");
-  const existingProject = defaults?.existingProject ?? false;
 
   function submit() {
     const shape = inspection.suggestedShape === "C"
       ? "C"
       : (needsAuth === "yes" || needsDb === "yes" ? "B" : "A");
-    onNext({ appName, needsAuth: needsAuth === "yes", needsDb: needsDb === "yes", shape, secretKeys: inspection.envKeys || [], existingProject });
+    onNext({ appName, needsAuth: needsAuth === "yes", needsDb: needsDb === "yes", shape, secretKeys: inspection.envKeys || [] });
   }
 
   return (
@@ -29,7 +28,7 @@ export default function Questions({ appDir, inspection, defaults, onBack, onNext
     >
       <div className="field">
         <label>What should we call your app?</label>
-        {existingProject ? (
+        {defaults?.existingProject ? (
           <>
             <input type="text" value={appName} readOnly style={{ opacity: 0.6, cursor: "default" }} />
             <div className="help">
@@ -40,8 +39,7 @@ export default function Questions({ appDir, inspection, defaults, onBack, onNext
           <>
             <input type="text" value={appName} onChange={e => setAppName(e.target.value)} />
             <div className="help">
-              This becomes part of your web address: <code className="codepath">{appName || "my-app"}-xxxx.web.app</code>.
-              We add a few random letters at the end so it's unique on Firebase.
+              This becomes your Firebase project ID and web address: <code className="codepath">{appName || "my-app"}.web.app</code>.
             </div>
           </>
         )}

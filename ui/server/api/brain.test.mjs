@@ -20,5 +20,5 @@ test("planApp persists deploy-app.config.json and returns the plan", async () =>
   };
   const plan = await planApp(STATIC_SAMPLE, answers);
   assert.equal(plan.appName, "ui-brain-test");
-  assert.match(plan.firebase.projectId, /^ui-brain-test-[a-z0-9]{1,4}$/);
+  assert.equal(plan.firebase.projectId, "ui-brain-test");
 });
