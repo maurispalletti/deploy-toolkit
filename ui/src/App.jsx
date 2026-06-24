@@ -10,6 +10,7 @@ import Done from "./pages/Done.jsx";
 import Bootstrap from "./pages/Bootstrap.jsx";
 import ScratchSetup from "./pages/ScratchSetup.jsx";
 import GitHubSetup from "./pages/GitHubSetup.jsx";
+import ScaffoldSetup from "./pages/ScaffoldSetup.jsx";
 import Prerequisites from "./pages/Prerequisites.jsx";
 import IncompatibleApp from "./pages/IncompatibleApp.jsx";
 import HardcodedSecretsBlock from "./pages/HardcodedSecretsBlock.jsx";
@@ -37,7 +38,8 @@ import { getAppDir } from "./api.js";
 //  13 AuthRefactorPrompt (A1 prompt-path content — only shown when authChoice=prompt)
 //  14 ScratchSetup (start-from-scratch path: project name + git init + Firebase)
 //  15 Prerequisites (scratch path: check/install required tools before ScratchSetup)
-//  16 GitHubSetup (scratch path: create GitHub repo + push after project init)
+//  16 GitHubSetup (scratch path: Firebase project creation)
+//  17 ScaffoldSetup (scratch path: Next.js + Shadcn + TanStack scaffold)
 
 // Routing helper: given an inspection result, pick the next step on the
 // happy path. Used after Inspector confirm AND after re-inspections from
@@ -270,6 +272,14 @@ export default function App() {
           appDir={scratchAppDir}
           repoUrl={scratchRepoUrl}
           onBack={() => setStep(14)}
+          onDone={() => setStep(17)}
+        />
+      )}
+      {step === 17 && (
+        <ScaffoldSetup
+          projectName={scratchProjectName}
+          appDir={scratchAppDir}
+          repoUrl={scratchRepoUrl}
           onDone={(newAppDir) => {
             setAppDir(newAppDir);
             resetWizard();

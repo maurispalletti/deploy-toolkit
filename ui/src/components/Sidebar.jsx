@@ -79,6 +79,13 @@ const SCRATCH_STEPS = [
     targetStep: 16,
     internalSteps: [16],
   },
+  {
+    id: "scaffold",
+    label: "Scaffold",
+    desc: "Generate Next.js app with Firebase and Shadcn",
+    targetStep: 17,
+    internalSteps: [17],
+  },
 ];
 
 export default function Sidebar({ flow, currentStep, onNavigate }) {

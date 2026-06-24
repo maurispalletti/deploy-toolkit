@@ -80,37 +80,18 @@ export default function GitHubSetup({ projectName, appDir, repoUrl, onBack, onDo
   if (phase === "done") {
     const firebaseUrl = `https://console.firebase.google.com/project/${projectName}`;
     return (
-      <Card title="Your project is ready">
+      <Card title="Firebase project created">
         <p className="card-sub">
-          Git repository, GitHub repo, and Firebase project are all set up.
-          Write your app in the folder below, then run{" "}
-          <code className="codepath">./deploy-app</code> again to put it on the
-          internet.
+          Firebase project is ready. Next we'll scaffold your app.
         </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "16px 0" }}>
-          <div>
-            <span className="muted">Folder:&nbsp;</span>
-            <code className="codepath">{appDir}</code>
-          </div>
-          {repoUrl && (
-            <div>
-              <span className="muted">GitHub:&nbsp;</span>
-              <a className="link" href={repoUrl} target="_blank" rel="noreferrer">
-                {repoUrl}
-              </a>
-            </div>
-          )}
-          <div>
-            <span className="muted">Firebase:&nbsp;</span>
-            <a className="link" href={firebaseUrl} target="_blank" rel="noreferrer">
-              {firebaseUrl}
-            </a>
-          </div>
+        <div style={{ margin: "12px 0" }}>
+          <span className="muted">Firebase:&nbsp;</span>
+          <a className="link" href={firebaseUrl} target="_blank" rel="noreferrer">
+            {firebaseUrl}
+          </a>
         </div>
-
         <div className="btn-row">
-          <Button onClick={() => onDone(appDir)}>Done</Button>
+          <Button onClick={() => onDone(appDir)}>Continue to scaffold</Button>
         </div>
       </Card>
     );

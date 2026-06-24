@@ -155,6 +155,32 @@ export function runInitGithub(appDir, projectName, { onLog, onFirebaseDone, onEr
   });
 }
 
+// Runs the scaffold stage — sets up Next.js, Shadcn, Firebase config, TanStack Query.
+// Streams log lines, calls onScaffoldDone({ appDir }) on success.
+export function runInitScaffold(appDir, projectName, { onLog, onScaffoldDone, onError }) {
+  return new Promise((resolve) => {
+    const url = `/api/init-scaffold?appDir=${encodeURIComponent(appDir)}&projectName=${encodeURIComponent(projectName)}`;
+    const es = new EventSource(url);
+    es.addEventListener("log", (e) => {
+      const { line } = JSON.parse(e.data);
+      onLog?.(line);
+    });
+    es.addEventListener("scaffold-done", (e) => {
+      onScaffoldDone?.(JSON.parse(e.data));
+    });
+    es.addEventListener("done", (e) => {
+      es.close();
+      resolve(JSON.parse(e.data));
+    });
+    es.addEventListener("error", (e) => {
+      const data = e.data ? JSON.parse(e.data) : { message: "stream error" };
+      onError?.(data);
+      es.close();
+      resolve({ exitCode: -1, error: data });
+    });
+  });
+}
+
 // Runs a stage, calls onLog(line) per log line, returns { exitCode, error? }
 export function runStage(stage, appDir, { onLog, onError }) {
   return new Promise((resolve) => {
