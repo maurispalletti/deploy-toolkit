@@ -29,15 +29,15 @@ For each tool below, if it is **already installed** run the update command; if i
   - install: `brew install gh`
   - update: `brew upgrade gh`
 
-- **firebase**
-  - check: `firebase --version`
-  - install: `npm install -g firebase-tools`
-  - update: `npm update -g firebase-tools`
-
 - **bru**
   - check: `bru --version`
   - install: `npm install -g @usebruno/cli`
   - update: `npm update -g @usebruno/cli`
+
+- **firebase**
+  - check: `firebase --version`
+  - install: `npm install -g firebase-tools`
+  - update: `npm update -g firebase-tools`
 
 Report each tool's status (updated / freshly installed / failed) and the version after the operation.
 
