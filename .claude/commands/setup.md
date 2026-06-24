@@ -14,10 +14,10 @@ Then stop — the remaining steps need brew.
 
 For each tool below, if it is **already installed** run the update command; if it is **not installed** run the install command:
 
-- **node**
-  - check: `node --version`
-  - install: `brew install node`
-  - update: `brew upgrade node`
+- **bru**
+  - check: `bru --version`
+  - install: `npm install -g @usebruno/cli`
+  - update: `npm update -g @usebruno/cli`
 
 - **git**
   - check: `git --version`
@@ -29,10 +29,10 @@ For each tool below, if it is **already installed** run the update command; if i
   - install: `brew install gh`
   - update: `brew upgrade gh`
 
-- **bru**
-  - check: `bru --version`
-  - install: `npm install -g @usebruno/cli`
-  - update: `npm update -g @usebruno/cli`
+- **node**
+  - check: `node --version`
+  - install: `brew install node`
+  - update: `brew upgrade node`
 
 - **firebase**
   - check: `firebase --version`
