@@ -9,10 +9,25 @@ TOOLKIT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 
 [ -f "$CONFIG" ] || { echo "✗ Missing $CONFIG"; exit 1; }
 
-PROJECT_ID=$(node -p "require('$CONFIG').firebase.projectId")
 NEEDS_DB=$(node -p "require('$CONFIG').firestore !== null")
 
 cd "$APP_DIR"
+
+# Resolve project ID: .firebaserc (most authoritative) → folder name.
+# deploy-app.config.json is intentionally skipped — the planner appends a
+# random suffix that doesn't match the actual Firebase project name.
+PROJECT_ID=$(node -e '
+const fs = require("fs"), path = require("path");
+const dir = process.argv[1];
+try {
+  const rc = JSON.parse(fs.readFileSync(path.join(dir, ".firebaserc"), "utf8"));
+  const id = rc?.projects?.default;
+  if (id) { process.stdout.write(id); process.exit(0); }
+} catch {}
+process.stdout.write(path.basename(dir));
+' "$APP_DIR")
+
+echo "▸ Using Firebase project: $PROJECT_ID"
 
 # If .firebaserc already points at this project the project exists — skip creation.
 FIREBASERC_PROJECT=$(node -e '

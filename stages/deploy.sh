@@ -14,7 +14,17 @@ CONFIG="$APP_DIR/deploy-app.config.json"
 
 cd "$APP_DIR"
 
-PROJECT_ID=$(node -p "require('./deploy-app.config.json').firebase.projectId")
+# .firebaserc → folder name (same resolution as provision/restore-env).
+PROJECT_ID=$(node -e '
+const fs = require("fs"), path = require("path");
+const dir = process.argv[1];
+try {
+  const rc = JSON.parse(fs.readFileSync(path.join(dir, ".firebaserc"), "utf8"));
+  const id = rc?.projects?.default;
+  if (id) { process.stdout.write(id); process.exit(0); }
+} catch {}
+process.stdout.write(path.basename(dir));
+' "$APP_DIR")
 NEEDS_DB=$(node -p "require('./deploy-app.config.json').firestore !== null")
 NEEDS_FN=$(node -p "require('./deploy-app.config.json').functions !== null")
 

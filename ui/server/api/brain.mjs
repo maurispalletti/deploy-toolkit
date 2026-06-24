@@ -90,11 +90,22 @@ export function mountBrain(app) {
         plan = JSON.parse(raw);
       } catch {}
 
-      let firebaseProjectId = plan?.firebase?.projectId ?? null;
-      if (!firebaseProjectId) {
+      // Resolve project ID: .firebaserc (most authoritative) → folder name.
+      // We intentionally ignore deploy-app.config.json's projectId here because
+      // the planner appends a random suffix (e.g. "my-app-a1b2") which is wrong
+      // for the continue flow — the user's Firebase project is named after the folder.
+      let firebaseProjectId = null;
+      try {
+        const rc = JSON.parse(await readFile(join(appDir, ".firebaserc"), "utf8"));
+        firebaseProjectId = rc?.projects?.default ?? null;
+      } catch {}
+      if (!firebaseProjectId) firebaseProjectId = basename(appDir);
+
+      // If the saved config has a different (stale/random) project ID, correct it.
+      if (plan?.firebase?.projectId && plan.firebase.projectId !== firebaseProjectId) {
+        plan.firebase.projectId = firebaseProjectId;
         try {
-          const rc = JSON.parse(await readFile(join(appDir, ".firebaserc"), "utf8"));
-          firebaseProjectId = rc?.projects?.default ?? null;
+          await writeFile(join(appDir, "deploy-app.config.json"), JSON.stringify(plan, null, 2) + "\n");
         } catch {}
       }
 
@@ -115,9 +126,8 @@ export function mountBrain(app) {
         }
       } catch {}
 
-      // For Next.js projects, fetch SDK config now so .env.local is ready
-      // before deploy (falls back to folder name when no .firebaserc exists).
-      const resolvedProjectId = firebaseProjectId ?? basename(appDir);
+      // For Next.js projects, fetch SDK config now so .env.local is ready before deploy.
+      const resolvedProjectId = firebaseProjectId;
       if (await isNextJsProject(appDir) && !(await envLocalHasFirebaseKey(appDir))) {
         await tryWriteEnvLocal(appDir, resolvedProjectId);
       }

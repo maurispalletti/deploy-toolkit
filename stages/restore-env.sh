@@ -6,8 +6,7 @@
 #
 # Project ID resolution order:
 #   1. .firebaserc → projects.default
-#   2. deploy-app.config.json → firebase.projectId
-#   3. basename of APP_DIR (matches the scratch-flow naming convention)
+#   2. basename of APP_DIR (folder name)
 set -euo pipefail
 
 APP_DIR="$1"
@@ -52,22 +51,17 @@ if [ "$HAS_KEY" = "yes" ]; then
 fi
 
 # ── 3. Resolve Firebase project ID ──────────────────────────────────────────
+# Resolution order: .firebaserc → folder name.
+# deploy-app.config.json is intentionally skipped — the planner adds a random
+# suffix (e.g. "my-app-a1b2") that doesn't match the actual Firebase project.
 PROJECT_ID=$(node -e '
 const fs = require("fs"), path = require("path");
 const dir = process.argv[1];
-// .firebaserc
 try {
   const rc = JSON.parse(fs.readFileSync(path.join(dir, ".firebaserc"), "utf8"));
   const id = rc?.projects?.default;
   if (id) { process.stdout.write(id); process.exit(0); }
 } catch {}
-// deploy-app.config.json
-try {
-  const cfg = JSON.parse(fs.readFileSync(path.join(dir, "deploy-app.config.json"), "utf8"));
-  const id = cfg?.firebase?.projectId;
-  if (id) { process.stdout.write(id); process.exit(0); }
-} catch {}
-// folder name
 process.stdout.write(path.basename(dir));
 ' "$APP_DIR")
 
