@@ -72,16 +72,32 @@ async function loginStatus() {
   }
 }
 
+async function ghLoginStatus() {
+  // gh auth status exits 0 when logged in, non-zero when not.
+  // Output goes to both stdout and stderr depending on gh version.
+  try {
+    const { stdout, stderr } = await exec("gh", ["auth", "status"]);
+    const text = stdout + stderr;
+    const match = text.match(/Logged in to [\w.-]+ account ([A-Za-z0-9_-]+)/);
+    if (match) return { ok: true, user: match[1] };
+    return { ok: false, user: null };
+  } catch (err) {
+    // gh not installed — propagate as not logged in
+    return { ok: false, user: null };
+  }
+}
+
 export async function collectPreflight() {
-  const [brew, git, gh, node, firebaseCli, login] = await Promise.all([
+  const [brew, git, gh, node, firebaseCli, login, ghLogin] = await Promise.all([
     brewStatus(),
     toolStatus("git"),
     toolStatus("gh"),
     nodeStatus(),
     firebaseStatus(),
     loginStatus(),
+    ghLoginStatus(),
   ]);
-  return { brew, git, gh, node, firebaseCli, login };
+  return { brew, git, gh, node, firebaseCli, login, ghLogin };
 }
 
 function devToolsSatisfied({ brew, git, gh }) {

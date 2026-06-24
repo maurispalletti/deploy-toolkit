@@ -39,6 +39,11 @@ export async function postLogin() {
   return r.json();
 }
 
+export async function postGhLogin() {
+  const r = await fetch("/api/gh-login", { method: "POST" });
+  return r.json();
+}
+
 export async function pickFolder() {
   const r = await fetch("/api/pick-folder", { method: "POST" });
   return r.json();
@@ -105,6 +110,32 @@ export function runInitProject(parentDir, projectName, { onLog, onScratchDone, o
     });
     es.addEventListener("scratch-done", (e) => {
       onScratchDone?.(JSON.parse(e.data));
+    });
+    es.addEventListener("done", (e) => {
+      es.close();
+      resolve(JSON.parse(e.data));
+    });
+    es.addEventListener("error", (e) => {
+      const data = e.data ? JSON.parse(e.data) : { message: "stream error" };
+      onError?.(data);
+      es.close();
+      resolve({ exitCode: -1, error: data });
+    });
+  });
+}
+
+// Runs the Firebase project creation step.
+// Streams log lines, calls onFirebaseDone({ appDir }) on success.
+export function runInitGithub(appDir, projectName, { onLog, onFirebaseDone, onError }) {
+  return new Promise((resolve) => {
+    const url = `/api/init-github?appDir=${encodeURIComponent(appDir)}&projectName=${encodeURIComponent(projectName)}`;
+    const es = new EventSource(url);
+    es.addEventListener("log", (e) => {
+      const { line } = JSON.parse(e.data);
+      onLog?.(line);
+    });
+    es.addEventListener("firebase-done", (e) => {
+      onFirebaseDone?.(JSON.parse(e.data));
     });
     es.addEventListener("done", (e) => {
       es.close();

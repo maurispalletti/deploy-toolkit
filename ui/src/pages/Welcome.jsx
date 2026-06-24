@@ -1,24 +1,23 @@
 import { useState } from "react";
 import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
+import BackButton from "../components/BackButton.jsx";
 import StatusRow from "../components/StatusRow.jsx";
 import { pickFolder } from "../api.js";
 
 export default function Welcome({ appDir, onAppDirChange, onNext, onScratch }) {
+  const [subStep, setSubStep] = useState(0);
+  const [folder, setFolder] = useState(appDir || "");
   const [error, setError] = useState(null);
   const [picking, setPicking] = useState(false);
-  const [scratchMode, setScratchMode] = useState(false);
-  const [parentDir, setParentDir] = useState("");
 
   async function browse() {
     setError(null);
     setPicking(true);
     try {
       const result = await pickFolder();
-      if (result.path) {
-        if (scratchMode) setParentDir(result.path);
-        else onAppDirChange(result.path);
-      } else if (result.error) setError(result.error);
+      if (result.path) setFolder(result.path);
+      else if (result.error) setError(result.error);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -26,27 +25,26 @@ export default function Welcome({ appDir, onAppDirChange, onNext, onScratch }) {
     }
   }
 
-  const hasAppDir = appDir && appDir.length > 0;
-  const hasParentDir = parentDir && parentDir.length > 0;
+  const hasFolder = !!folder;
 
-  if (scratchMode) {
+  if (subStep === 0) {
     return (
       <Card
-        title="Start a new project"
-        sub="Pick the folder where you'd like to create your project. We'll make a subfolder for it there."
+        title="Let's get your app online"
+        sub="Start by picking the folder you want to work with."
       >
-        {hasParentDir ? (
+        {hasFolder ? (
           <StatusRow
             state="ok"
-            title="Got it — project folder will be created here"
-            meta={<span className="codepath">{parentDir}</span>}
-            action={<a className="link" onClick={browse}>Change</a>}
+            title="Folder selected"
+            meta={<span className="codepath">{folder}</span>}
+            action={<a className="link" onClick={browse} style={{ cursor: "pointer" }}>Change</a>}
           />
         ) : (
           <StatusRow
             state="pending"
-            title="Where do you want to create your project?"
-            meta="Pick any folder on your computer (e.g. your Documents or Projects folder)."
+            title="Which folder do you want to work with?"
+            meta="This can be an existing app or any folder where you'd like to create a new project."
             action={
               <Button variant="secondary" onClick={browse} disabled={picking}>
                 {picking ? "Opening picker…" : "Pick folder"}
@@ -54,20 +52,13 @@ export default function Welcome({ appDir, onAppDirChange, onNext, onScratch }) {
             }
           />
         )}
-
         {error && (
           <div className="muted" style={{ marginTop: 12, fontSize: 13, color: "var(--red)" }}>
             {error}
           </div>
         )}
-
-        <div className="btn-row split">
-          <Button variant="secondary" onClick={() => { setScratchMode(false); setParentDir(""); setError(null); }}>
-            Back
-          </Button>
-          <Button onClick={() => onScratch(parentDir)} disabled={!hasParentDir}>
-            Get started
-          </Button>
+        <div className="btn-row" style={{ justifyContent: "flex-end" }}>
+          <Button onClick={() => setSubStep(1)} disabled={!hasFolder}>Next</Button>
         </div>
       </Card>
     );
@@ -75,46 +66,36 @@ export default function Welcome({ appDir, onAppDirChange, onNext, onScratch }) {
 
   return (
     <Card
-      title="Let's get your app online"
-      sub="We'll put your app on the internet using Firebase (Google's free hosting service). We ask a few quick questions, then handle all the setup for you."
+      title="What would you like to do?"
+      sub={<span className="codepath">{folder}</span>}
     >
-
-      {hasAppDir ? (
-        <StatusRow
-          state="ok"
-          title="Got it — we'll deploy this folder"
-          meta={<span className="codepath">{appDir}</span>}
-          action={<a className="link" onClick={browse}>Change folder</a>}
-        />
-      ) : (
-        <StatusRow
-          state="pending"
-          title="Which folder is your app in?"
-          meta="Pick the folder where your app's code lives (the one with index.html or package.json inside)."
-          action={
-            <Button variant="secondary" onClick={browse} disabled={picking}>
-              {picking ? "Opening picker…" : "Pick folder"}
-            </Button>
-          }
-        />
-      )}
-
-      {error && (
-        <div className="muted" style={{marginTop:12, fontSize:13, color:"var(--red)"}}>
-          {error}
-        </div>
-      )}
-
-      <div className="btn-row split">
-        <span className="muted" style={{fontSize:13}}>
-          Starting fresh?{" "}
-          <a className="link" onClick={() => setScratchMode(true)} style={{cursor:"pointer"}}>
-            Set up a new project
-          </a>
-          {" · "}
-          CLI mode: <code className="codepath">./deploy-app /path --cli</code>
-        </span>
-        <Button onClick={onNext} disabled={!hasAppDir}>Get started</Button>
+      <div className="choice-list">
+        <button
+          className="choice-card"
+          onClick={() => {
+            onAppDirChange(folder);
+            onNext();
+          }}
+        >
+          <div className="choice-icon">🚀</div>
+          <div className="choice-body">
+            <div className="choice-title">Publish an existing app</div>
+            <div className="choice-meta">Your app is already built — let's put it on the internet.</div>
+          </div>
+        </button>
+        <button
+          className="choice-card"
+          onClick={() => onScratch(folder)}
+        >
+          <div className="choice-icon">✨</div>
+          <div className="choice-body">
+            <div className="choice-title">Start from scratch</div>
+            <div className="choice-meta">Create a brand-new project with hosting, a database, and sign-in set up from day one.</div>
+          </div>
+        </button>
+      </div>
+      <div className="btn-row">
+        <BackButton onClick={() => setSubStep(0)} />
       </div>
     </Card>
   );

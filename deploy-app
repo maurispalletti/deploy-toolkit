@@ -4,6 +4,27 @@
 # Pass --cli to run the existing terminal-only flow.
 set -euo pipefail
 
+# Check for Node.js before anything else — nothing else in this script works without it.
+if ! command -v node >/dev/null 2>&1; then
+  echo ""
+  echo "  Node.js is not installed."
+  echo ""
+  echo "  Install it from https://nodejs.org — download the LTS version,"
+  echo "  run the installer, then open a new terminal and try again."
+  echo ""
+  exit 1
+fi
+NODE_MAJOR=$(node -e "process.stdout.write(String(process.versions.node.split('.')[0]))")
+if [ "$NODE_MAJOR" -lt 22 ]; then
+  echo ""
+  echo "  Node.js $(node --version) is installed, but this tool needs version 22 or newer."
+  echo ""
+  echo "  Download the latest LTS from https://nodejs.org, run the installer,"
+  echo "  then open a new terminal and try again."
+  echo ""
+  exit 1
+fi
+
 USE_CLI=false
 APP_DIR=""
 for arg in "$@"; do

@@ -25,6 +25,16 @@ export function mountAuth(app, serverRef) {
     res.json({ started: true });
   });
 
+  app.post("/api/gh-login", (_req, res) => {
+    console.log("\n▸ Starting `gh auth login`... watch your terminal AND browser.");
+    const proc = spawn("gh", ["auth", "login", "--web", "--hostname", "github.com"], { stdio: "inherit" });
+    proc.on("exit", (code) => {
+      console.log(`▸ gh auth login exited with code ${code}`);
+    });
+    proc.on("error", () => {});
+    res.json({ started: true });
+  });
+
   app.post("/api/quit", (_req, res) => {
     res.json({ ok: true });
     setTimeout(() => {

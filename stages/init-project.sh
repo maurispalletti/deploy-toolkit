@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# init-project.sh — initialize a brand-new project: git repo, GitHub repo,
-# and Firebase project.  Called by the wizard's "start from scratch" path.
+# init-project.sh — initialize a brand-new project: git repo and GitHub repo.
+# Firebase project creation happens in the following wizard step (init-firebase.sh).
 # Usage: init-project.sh PARENT_DIR PROJECT_NAME
 set -euo pipefail
 
@@ -10,7 +10,7 @@ APP_DIR="$PARENT_DIR/$PROJECT_NAME"
 
 step() { printf "▸ %s\n" "$1"; }
 info() { printf "  %s\n" "$1"; }
-fail() { printf "✗ %s\n" "$1" >&2; exit 1; }
+toolkit_error() { printf "DEPLOY_TOOLKIT_ERROR:%s:%s\n" "$1" "$2"; }
 
 # 1. Create project folder
 mkdir -p "$APP_DIR"
@@ -60,36 +60,25 @@ else
     git push -u origin main >/dev/null 2>&1 || true
     info "GitHub repo already exists — linked: $REPO_URL"
   else
-    gh repo create "$PROJECT_NAME" --private --source=. --remote=origin --push
+    set +e
+    GH_OUTPUT=$(gh repo create "$PROJECT_NAME" --private --source=. --remote=origin --push 2>&1)
+    GH_EXIT=$?
+    set -e
+    if [ $GH_EXIT -ne 0 ]; then
+      printf "%s\n" "$GH_OUTPUT"
+      if echo "$GH_OUTPUT" | grep -qi "already exist\|Name already"; then
+        toolkit_error "GITHUB_REPO_EXISTS" "A GitHub repo named '$PROJECT_NAME' already exists under your account. Delete it on GitHub or pick a different project name."
+      elif echo "$GH_OUTPUT" | grep -qi "authentication\|credentials\|auth\|permission"; then
+        toolkit_error "GITHUB_AUTH_FAILED" "GitHub authentication failed. Go back to Prerequisites and sign in to GitHub again."
+      else
+        toolkit_error "GITHUB_CREATE_FAILED" "Couldn't create the GitHub repository. Check the output above for details."
+      fi
+      exit $GH_EXIT
+    fi
     REPO_URL=$(gh repo view "$PROJECT_NAME" --json url -q '.url' 2>/dev/null || true)
     info "Created: $REPO_URL"
   fi
 fi
 
-# 6. Firebase project
-step "Creating Firebase project"
-PROJECT_LIST_JSON=$(firebase projects:list --json 2>/dev/null || true)
-PROJECT_EXISTS=$(node -e '
-const data = JSON.parse(process.argv[1] || "{}");
-const ids = (data.result || []).map(p => p.projectId);
-process.stdout.write(ids.includes(process.argv[2]) ? "yes" : "no");
-' "$PROJECT_LIST_JSON" "$PROJECT_NAME")
-
-if [ "$PROJECT_EXISTS" = "yes" ]; then
-  info "Firebase project '$PROJECT_NAME' already exists — reusing"
-else
-  set +e
-  CREATE_OUTPUT=$(firebase projects:create "$PROJECT_NAME" --display-name "$PROJECT_NAME" 2>&1)
-  CREATE_EXIT=$?
-  set -e
-  printf "%s\n" "$CREATE_OUTPUT"
-  if [ $CREATE_EXIT -ne 0 ]; then
-    if echo "$CREATE_OUTPUT" | grep -q "PERMISSION_DENIED\|caller does not have permission"; then
-      echo "DEPLOY_TOOLKIT_SENTINEL:NEEDS_BOOTSTRAP"
-    fi
-    exit $CREATE_EXIT
-  fi
-fi
-
-echo "✓ Project setup complete"
+echo "✓ Git and GitHub setup complete"
 printf "DEPLOY_TOOLKIT_SCRATCH_DONE:%s\t%s\t%s\n" "$PROJECT_NAME" "$APP_DIR" "$REPO_URL"
