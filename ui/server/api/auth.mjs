@@ -25,6 +25,48 @@ export function mountAuth(app, serverRef) {
     res.json({ started: true });
   });
 
+  app.post("/api/firebase-logout", (_req, res) => {
+    const proc = spawn("firebase", ["logout"], { stdio: "inherit" });
+    proc.on("exit", (code) => {
+      console.log(`▸ firebase logout exited with code ${code}`);
+    });
+    proc.on("error", () => {});
+    res.json({ started: true });
+  });
+
+  app.post("/api/gh-login", (_req, res) => {
+    console.log("\n▸ Starting `gh auth login`... watch your terminal AND browser.");
+    const proc = spawn("gh", ["auth", "login", "--web", "--hostname", "github.com"], { stdio: "inherit" });
+    proc.on("exit", (code) => {
+      console.log(`▸ gh auth login exited with code ${code}`);
+    });
+    proc.on("error", () => {});
+    res.json({ started: true });
+  });
+
+  app.post("/api/open-in-ide", (req, res) => {
+    const { ide, appDir } = req.body;
+    if (!appDir) return res.status(400).json({ error: "appDir is required" });
+
+    const openApp = (name) => spawn("open", ["-a", name, appDir], { stdio: "ignore" });
+
+    if (ide === "cursor") {
+      const p = spawn("cursor", [appDir], { stdio: "ignore" });
+      p.on("error", () => openApp("Cursor"));
+    } else if (ide === "vscode") {
+      const p = spawn("code", [appDir], { stdio: "ignore" });
+      p.on("error", () => openApp("Visual Studio Code"));
+    } else if (ide === "antigravity") {
+      openApp("Antigravity");
+    } else if (ide === "devin") {
+      openApp("Devin");
+    } else {
+      return res.status(400).json({ error: "Unknown IDE" });
+    }
+
+    res.json({ ok: true });
+  });
+
   app.post("/api/quit", (_req, res) => {
     res.json({ ok: true });
     setTimeout(() => {

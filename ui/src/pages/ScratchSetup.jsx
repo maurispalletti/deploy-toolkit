@@ -6,21 +6,58 @@ import { runInitProject } from "../api.js";
 
 const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
 
-export default function ScratchSetup({ parentDir, onBack, onDone }) {
+const ERROR_GUIDANCE = {
+  GITHUB_REPO_EXISTS: {
+    retryLabel: "Pick a different name",
+  },
+  GITHUB_AUTH_FAILED: {
+    retryLabel: "Go back and sign in",
+  },
+};
+
+function ErrorBanner({ errorInfo, onRetry }) {
+  const message = errorInfo?.message || "Something went wrong — check the output above for details.";
+  const guidance = ERROR_GUIDANCE[errorInfo?.code] ?? {};
+  return (
+    <div style={{ marginTop: 16 }}>
+      <div className="warning-banner">
+        <div className="warning-icon">✗</div>
+        <div className="warning-body">
+          <div className="warning-title">Setup failed</div>
+          <div className="warning-text">
+            {message}
+            {guidance.href && (
+              <>{" "}<a className="link" href={guidance.href} target="_blank" rel="noreferrer">{guidance.action}</a>, then try again.</>
+            )}
+          </div>
+        </div>
+      </div>
+      <div className="btn-row" style={{ marginTop: 8 }}>
+        <Button variant="secondary" onClick={onRetry}>
+          {guidance.retryLabel ?? "Try again"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+export default function ScratchSetup({ parentDir, onBack, onProjectCreated }) {
   const [projectName, setProjectName] = useState("");
   const [phase, setPhase] = useState("input"); // "input" | "running" | "done"
   const [lines, setLines] = useState([]);
   const [stageStatus, setStageStatus] = useState("idle");
   const [result, setResult] = useState(null);
+  const [errorInfo, setErrorInfo] = useState(null);
 
   async function start() {
     setPhase("running");
     setStageStatus("running");
+    setErrorInfo(null);
     let scratchResult = null;
     const { exitCode } = await runInitProject(parentDir, projectName, {
       onLog: (line) => setLines(l => [...l, line]),
       onScratchDone: (data) => { scratchResult = data; },
-      onError: () => setStageStatus("error"),
+      onError: (err) => { setErrorInfo(err); setStageStatus("error"); },
     });
     if (exitCode === 0) {
       setStageStatus("done");
@@ -38,17 +75,14 @@ export default function ScratchSetup({ parentDir, onBack, onDone }) {
 
   if (phase === "done") {
     const appDir = result?.appDir || `${parentDir}/${projectName}`;
-    const repoUrl = result?.repoUrl;
-    const firebaseUrl = `https://console.firebase.google.com/project/${result?.projectName || projectName}`;
+    const repoUrl = result?.repoUrl || "";
+    const resolvedName = result?.projectName || projectName;
     return (
-      <Card title="Your project is ready">
+      <Card title="GitHub repository created">
         <p className="card-sub">
-          Git repository, GitHub repo, and Firebase project are all set up.
-          Write your app in the folder below, then run{" "}
-          <code className="codepath">./deploy-app</code> again to put it on the
-          internet.
+          Your local git repo is initialised and the code is pushed to GitHub.
+          Next we'll create the Firebase project.
         </p>
-
         <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "16px 0" }}>
           <div>
             <span className="muted">Folder:&nbsp;</span>
@@ -57,21 +91,14 @@ export default function ScratchSetup({ parentDir, onBack, onDone }) {
           {repoUrl && (
             <div>
               <span className="muted">GitHub:&nbsp;</span>
-              <a className="link" href={repoUrl} target="_blank" rel="noreferrer">
-                {repoUrl}
-              </a>
+              <a className="link" href={repoUrl} target="_blank" rel="noreferrer">{repoUrl}</a>
             </div>
           )}
-          <div>
-            <span className="muted">Firebase:&nbsp;</span>
-            <a className="link" href={firebaseUrl} target="_blank" rel="noreferrer">
-              {firebaseUrl}
-            </a>
-          </div>
         </div>
-
         <div className="btn-row">
-          <Button onClick={() => onDone(appDir)}>Done</Button>
+          <Button onClick={() => onProjectCreated(resolvedName, appDir, repoUrl)}>
+            Continue to Firebase
+          </Button>
         </div>
       </Card>
     );
@@ -81,7 +108,7 @@ export default function ScratchSetup({ parentDir, onBack, onDone }) {
     return (
       <Card
         title="Setting up your project…"
-        sub="Initializing git, creating GitHub repo, and creating Firebase project."
+        sub="Initializing git repository and creating GitHub repo."
       >
         <StageCard
           name={`Setting up ${projectName}`}
@@ -90,11 +117,7 @@ export default function ScratchSetup({ parentDir, onBack, onDone }) {
           open
         />
         {stageStatus === "error" && (
-          <div className="btn-row" style={{ marginTop: 16 }}>
-            <Button variant="secondary" onClick={() => { setPhase("input"); setLines([]); setStageStatus("idle"); }}>
-              Try again
-            </Button>
-          </div>
+          <ErrorBanner errorInfo={errorInfo} onRetry={() => { setPhase("input"); setLines([]); setStageStatus("idle"); setErrorInfo(null); }} />
         )}
       </Card>
     );
@@ -105,7 +128,7 @@ export default function ScratchSetup({ parentDir, onBack, onDone }) {
   return (
     <Card
       title="Let's set up your project"
-      sub="We'll create a git repository, a private GitHub repo, and a Firebase project — all under this name."
+      sub="We'll create a local git repository and a private GitHub repo under this name. Firebase comes next."
     >
       <div style={{ marginBottom: 20 }}>
         <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14 }}>
@@ -135,7 +158,7 @@ export default function ScratchSetup({ parentDir, onBack, onDone }) {
 
       <div className="btn-row split">
         <Button variant="secondary" onClick={onBack}>Back</Button>
-        <Button onClick={start} disabled={!valid}>Set up project</Button>
+        <Button onClick={start} disabled={!valid}>Continue</Button>
       </div>
     </Card>
   );

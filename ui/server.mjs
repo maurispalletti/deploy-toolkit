@@ -10,6 +10,8 @@ import { mountAuth } from "./server/api/auth.mjs";
 import { mountPicker } from "./server/api/picker.mjs";
 import { mountRefactor } from "./server/api/refactor.mjs";
 import { mountInitProject } from "./server/api/init-project.mjs";
+import { mountInitGithub } from "./server/api/init-github.mjs";
+import { mountInitScaffold } from "./server/api/init-scaffold.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // APP_DIR may be empty — the wizard's Welcome page lets the user pick a folder
@@ -27,6 +29,8 @@ async function main() {
   mountPicker(app);
   mountRefactor(app);
   mountInitProject(app);
+  mountInitGithub(app);
+  mountInitScaffold(app);
   app.use(express.static(join(__dirname, "dist")));
 
   app.get("/api/app-dir", (_req, res) => res.json({ appDir: APP_DIR }));

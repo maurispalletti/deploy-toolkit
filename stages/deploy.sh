@@ -14,18 +14,27 @@ CONFIG="$APP_DIR/deploy-app.config.json"
 
 cd "$APP_DIR"
 
-PROJECT_ID=$(node -p "require('./deploy-app.config.json').firebase.projectId")
-NEEDS_DB=$(node -p "require('./deploy-app.config.json').firestore !== null")
+# .firebaserc → folder name (same resolution as provision/restore-env).
+PROJECT_ID=$(node -e '
+const fs = require("fs"), path = require("path");
+const dir = process.argv[1];
+try {
+  const rc = JSON.parse(fs.readFileSync(path.join(dir, ".firebaserc"), "utf8"));
+  const id = rc?.projects?.default;
+  if (id) { process.stdout.write(id); process.exit(0); }
+} catch {}
+process.stdout.write(path.basename(dir));
+' "$APP_DIR")
 NEEDS_FN=$(node -p "require('./deploy-app.config.json').functions !== null")
 
-TARGETS="hosting"
-[ "$NEEDS_DB" = "true" ] && TARGETS="$TARGETS,firestore"
+# Firestore is always deployed; functions only when configured.
+TARGETS="hosting,firestore"
 [ "$NEEDS_FN" = "true" ] && TARGETS="$TARGETS,functions"
 
 echo "▸ Deploying targets: $TARGETS"
 
 set +e
-DEPLOY_OUTPUT=$(firebase deploy --only "$TARGETS" 2>&1)
+DEPLOY_OUTPUT=$(firebase deploy --only "$TARGETS" --project "$PROJECT_ID" 2>&1)
 DEPLOY_EXIT=$?
 set -e
 

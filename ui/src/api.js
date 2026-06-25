@@ -39,6 +39,25 @@ export async function postLogin() {
   return r.json();
 }
 
+export async function postOpenInIDE(ide, appDir) {
+  const r = await fetch("/api/open-in-ide", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ ide, appDir }),
+  });
+  return r.json();
+}
+
+export async function postFirebaseLogout() {
+  const r = await fetch("/api/firebase-logout", { method: "POST" });
+  return r.json();
+}
+
+export async function postGhLogin() {
+  const r = await fetch("/api/gh-login", { method: "POST" });
+  return r.json();
+}
+
 export async function pickFolder() {
   const r = await fetch("/api/pick-folder", { method: "POST" });
   return r.json();
@@ -48,8 +67,30 @@ export async function postQuit() {
   try { await fetch("/api/quit", { method: "POST" }); } catch {}
 }
 
+export async function getFirebaseProjects() {
+  const r = await fetch("/api/firebase-projects");
+  if (!r.ok) return { projectIds: [] };
+  return r.json();
+}
+
 export async function getExistingConfig(appDir) {
   const r = await fetch(`/api/existing-config?appDir=${encodeURIComponent(appDir)}`);
+  return r.json();
+}
+
+export async function getResumeConfig(appDir) {
+  const r = await fetch(`/api/resume-config?appDir=${encodeURIComponent(appDir)}`);
+  if (!r.ok) throw new Error(`resume-config ${r.status}`);
+  return r.json();
+}
+
+export async function updatePlanFeatures(appDir, { addFirestore, addAuth }) {
+  const r = await fetch("/api/update-plan-features", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ appDir, addFirestore, addAuth }),
+  });
+  if (!r.ok) throw new Error(`update-plan-features ${r.status}`);
   return r.json();
 }
 
@@ -105,6 +146,58 @@ export function runInitProject(parentDir, projectName, { onLog, onScratchDone, o
     });
     es.addEventListener("scratch-done", (e) => {
       onScratchDone?.(JSON.parse(e.data));
+    });
+    es.addEventListener("done", (e) => {
+      es.close();
+      resolve(JSON.parse(e.data));
+    });
+    es.addEventListener("error", (e) => {
+      const data = e.data ? JSON.parse(e.data) : { message: "stream error" };
+      onError?.(data);
+      es.close();
+      resolve({ exitCode: -1, error: data });
+    });
+  });
+}
+
+// Runs the Firebase project creation step.
+// Streams log lines, calls onFirebaseDone({ appDir }) on success.
+export function runInitGithub(appDir, projectName, { onLog, onFirebaseDone, onError }) {
+  return new Promise((resolve) => {
+    const url = `/api/init-github?appDir=${encodeURIComponent(appDir)}&projectName=${encodeURIComponent(projectName)}`;
+    const es = new EventSource(url);
+    es.addEventListener("log", (e) => {
+      const { line } = JSON.parse(e.data);
+      onLog?.(line);
+    });
+    es.addEventListener("firebase-done", (e) => {
+      onFirebaseDone?.(JSON.parse(e.data));
+    });
+    es.addEventListener("done", (e) => {
+      es.close();
+      resolve(JSON.parse(e.data));
+    });
+    es.addEventListener("error", (e) => {
+      const data = e.data ? JSON.parse(e.data) : { message: "stream error" };
+      onError?.(data);
+      es.close();
+      resolve({ exitCode: -1, error: data });
+    });
+  });
+}
+
+// Runs the scaffold stage — sets up Next.js, Shadcn, Firebase config, TanStack Query.
+// Streams log lines, calls onScaffoldDone({ appDir }) on success.
+export function runInitScaffold(appDir, projectName, { onLog, onScaffoldDone, onError }) {
+  return new Promise((resolve) => {
+    const url = `/api/init-scaffold?appDir=${encodeURIComponent(appDir)}&projectName=${encodeURIComponent(projectName)}`;
+    const es = new EventSource(url);
+    es.addEventListener("log", (e) => {
+      const { line } = JSON.parse(e.data);
+      onLog?.(line);
+    });
+    es.addEventListener("scaffold-done", (e) => {
+      onScaffoldDone?.(JSON.parse(e.data));
     });
     es.addEventListener("done", (e) => {
       es.close();

@@ -9,11 +9,11 @@ function sseEvent(stream, event, data) {
   stream.write(`data: ${JSON.stringify(data)}\n\n`);
 }
 
-export function mountInitProject(app) {
-  app.get("/api/init-project", async (req, res) => {
-    const { parentDir, projectName } = req.query;
-    if (!parentDir || !projectName) {
-      return res.status(400).json({ error: "parentDir and projectName are required" });
+export function mountInitScaffold(app) {
+  app.get("/api/init-scaffold", async (req, res) => {
+    const { appDir, projectName } = req.query;
+    if (!appDir || !projectName) {
+      return res.status(400).json({ error: "appDir and projectName are required" });
     }
 
     res.setHeader("Content-Type", "text/event-stream");
@@ -21,8 +21,8 @@ export function mountInitProject(app) {
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders?.();
 
-    const script = join(TOOLKIT_DIR, "stages/init-project.sh");
-    const proc = spawn("bash", [script, parentDir, projectName], { cwd: TOOLKIT_DIR });
+    const script = join(TOOLKIT_DIR, "stages/init-scaffold.sh");
+    const proc = spawn("bash", [script, appDir, projectName], { cwd: TOOLKIT_DIR });
     let buf = "";
 
     function handleChunk(chunk) {
@@ -31,17 +31,10 @@ export function mountInitProject(app) {
       while ((i = buf.indexOf("\n")) >= 0) {
         const line = buf.slice(0, i);
         buf = buf.slice(i + 1);
-        if (line.startsWith("DEPLOY_TOOLKIT_SCRATCH_DONE:")) {
-          const parts = line.slice("DEPLOY_TOOLKIT_SCRATCH_DONE:".length).split("\t");
-          sseEvent(res, "scratch-done", {
-            projectName: parts[0] || projectName,
-            appDir: parts[1] || "",
-            repoUrl: parts[2] || "",
+        if (line.startsWith("DEPLOY_TOOLKIT_SCAFFOLD_DONE:")) {
+          sseEvent(res, "scaffold-done", {
+            appDir: line.slice("DEPLOY_TOOLKIT_SCAFFOLD_DONE:".length) || appDir,
           });
-          continue;
-        }
-        if (line.includes("DEPLOY_TOOLKIT_SENTINEL:NEEDS_BOOTSTRAP")) {
-          sseEvent(res, "error", { code: "NEEDS_BOOTSTRAP", message: "Firebase TOS bootstrap required" });
           continue;
         }
         if (line.startsWith("DEPLOY_TOOLKIT_ERROR:")) {

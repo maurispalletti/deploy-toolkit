@@ -4,17 +4,33 @@ import Button from "../components/Button.jsx";
 import StageCard from "../components/StageCard.jsx";
 import { runStage } from "../api.js";
 
-const STAGES = [
+const ALL_STAGES = [
   { id: "provision", name: "Setting up your Firebase project" },
   { id: "inject-secrets", name: "Setting up your app's config values" },
   // inject-auth is a no-op when plan.auth === null, so it's safe to run
   // unconditionally — same pattern as inject-secrets.
   { id: "inject-auth", name: "Wiring up sign-in" },
+  // restore-env is a no-op for non-Next.js projects and when .env.local
+  // already has the Firebase keys.
+  { id: "restore-env", name: "Restoring Firebase environment config" },
   { id: "build", name: "Building your app" },
   { id: "deploy", name: "Putting it on the internet" },
 ];
 
-export default function Progress({ appDir, onDone, onError }) {
+const STAGE_NAMES = {
+  provision: "Setting up your Firebase project",
+  "inject-secrets": "Setting up your app's config values",
+  "inject-auth": "Wiring up sign-in",
+  "restore-env": "Restoring Firebase environment config",
+  build: "Building your app",
+  deploy: "Putting it on the internet",
+};
+
+export default function Progress({ appDir, stages: stageIds, onDone, onError }) {
+  const STAGES = stageIds
+    ? stageIds.map(id => ({ id, name: STAGE_NAMES[id] ?? id }))
+    : ALL_STAGES;
+
   const [stageState, setStageState] = useState(() =>
     STAGES.reduce((acc, s) => ({ ...acc, [s.id]: { status: "idle", lines: [] } }), {})
   );
