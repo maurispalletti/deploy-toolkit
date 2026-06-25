@@ -85,10 +85,26 @@ deploy-toolkit/
 
 ### Fresh laptop setup
 
-Got a new Mac and want to get everything in one shot? Paste the block below into [Claude](https://claude.ai) and it will install and/or update every tool you need, log you in to GitHub and Firebase, and clone this repo into `~/Documents/deploy-toolkit`.
+Got a new Mac and want to get everything in one shot? There are two ways depending on how you're set up:
+
+**Using Claude Code** — run `/setup` from inside this repo. It will install and/or update every tool you need, log you in to GitHub and Firebase, and clone the repo into `~/Documents/deploy-toolkit`.
+
+**Using the terminal** — run this from anywhere:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/maurispalletti/deploy-toolkit/main/setup.sh)
+```
+
+Or if you already have the repo cloned:
+
+```bash
+./setup.sh
+```
+
+If you don't have Claude Code yet and prefer to use [Claude](https://claude.ai) on the web, paste the prompt below and it will walk you through the same steps interactively.
 
 <details>
-<summary>Click to expand the setup prompt</summary>
+<summary>Click to expand the web Claude prompt</summary>
 
 ```
 Check and install all required CLI tools, then ensure the user is authenticated with GitHub CLI and Firebase CLI.
@@ -166,7 +182,6 @@ Print a table showing each tool's installed version, auth status, and whether th
 
 </details>
 
-If you already have Claude Code installed, you can run `/setup` from inside this repo instead — it does the same thing.
 
 ### Running the tests
 
