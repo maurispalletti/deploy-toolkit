@@ -2,20 +2,29 @@ import { useState } from "react";
 import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
 import StageCard from "../components/StageCard.jsx";
-import { runInitProject } from "../api.js";
+import { runInitGithub } from "../api.js";
 
 const PROJECT_NAME_RE = /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/;
 
 const ERROR_GUIDANCE = {
-  GITHUB_REPO_EXISTS: {
-    retryLabel: "Pick a different name",
+  PROJECT_QUOTA_EXCEEDED: {
+    action: "Delete unused projects",
+    href: "https://console.cloud.google.com/iam-admin/projects",
+    retryLabel: "Try again",
   },
-  GITHUB_AUTH_FAILED: {
-    retryLabel: "Go back and sign in",
+  PROJECT_ID_TAKEN: {
+    retryLabel: "Pick a different name",
+    goBack: true,
+  },
+  NEEDS_BOOTSTRAP: {
+    retryLabel: "Try again",
+  },
+  FIREBASE_CREATE_FAILED: {
+    retryLabel: "Try again",
   },
 };
 
-function ErrorBanner({ errorInfo, onRetry }) {
+function ErrorBanner({ errorInfo, onRetry, onBack }) {
   const message = errorInfo?.message || "Something went wrong — check the output above for details.";
   const guidance = ERROR_GUIDANCE[errorInfo?.code] ?? {};
   return (
@@ -33,9 +42,11 @@ function ErrorBanner({ errorInfo, onRetry }) {
         </div>
       </div>
       <div className="btn-row" style={{ marginTop: 8 }}>
-        <Button variant="secondary" onClick={onRetry}>
-          {guidance.retryLabel ?? "Try again"}
-        </Button>
+        {guidance.goBack ? (
+          <Button variant="secondary" onClick={onBack}>{guidance.retryLabel}</Button>
+        ) : (
+          <Button variant="secondary" onClick={onRetry}>{guidance.retryLabel ?? "Try again"}</Button>
+        )}
       </div>
     </div>
   );
@@ -43,28 +54,29 @@ function ErrorBanner({ errorInfo, onRetry }) {
 
 export default function ScratchSetup({ parentDir, onBack, onProjectCreated }) {
   const [projectName, setProjectName] = useState("");
-  const [phase, setPhase] = useState("input"); // "input" | "running" | "done"
+  const [phase, setPhase] = useState("input"); // "input" | "running" | "done" | "error"
   const [lines, setLines] = useState([]);
   const [stageStatus, setStageStatus] = useState("idle");
-  const [result, setResult] = useState(null);
   const [errorInfo, setErrorInfo] = useState(null);
+
+  const appDir = `${parentDir}/${projectName}`;
 
   async function start() {
     setPhase("running");
     setStageStatus("running");
+    setLines([]);
     setErrorInfo(null);
-    let scratchResult = null;
-    const { exitCode } = await runInitProject(parentDir, projectName, {
+    const { exitCode } = await runInitGithub(appDir, projectName, {
       onLog: (line) => setLines(l => [...l, line]),
-      onScratchDone: (data) => { scratchResult = data; },
+      onFirebaseDone: () => {},
       onError: (err) => { setErrorInfo(err); setStageStatus("error"); },
     });
     if (exitCode === 0) {
       setStageStatus("done");
-      setResult(scratchResult);
       setPhase("done");
     } else {
       setStageStatus("error");
+      setPhase("error");
     }
   }
 
@@ -74,50 +86,41 @@ export default function ScratchSetup({ parentDir, onBack, onProjectCreated }) {
   }
 
   if (phase === "done") {
-    const appDir = result?.appDir || `${parentDir}/${projectName}`;
-    const repoUrl = result?.repoUrl || "";
-    const resolvedName = result?.projectName || projectName;
+    const firebaseUrl = `https://console.firebase.google.com/project/${projectName}`;
     return (
-      <Card title="GitHub repository created">
+      <Card title="Firebase project created">
         <p className="card-sub">
-          Your local git repo is initialised and the code is pushed to GitHub.
-          Next we'll create the Firebase project.
+          Firebase project is ready. Next we'll set up your GitHub repository.
         </p>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "16px 0" }}>
-          <div>
-            <span className="muted">Folder:&nbsp;</span>
-            <code className="codepath">{appDir}</code>
-          </div>
-          {repoUrl && (
-            <div>
-              <span className="muted">GitHub:&nbsp;</span>
-              <a className="link" href={repoUrl} target="_blank" rel="noreferrer">{repoUrl}</a>
-            </div>
-          )}
+        <div style={{ margin: "12px 0" }}>
+          <span className="muted">Firebase:&nbsp;</span>
+          <a className="link" href={firebaseUrl} target="_blank" rel="noreferrer">{firebaseUrl}</a>
         </div>
         <div className="btn-row">
-          <Button onClick={() => onProjectCreated(resolvedName, appDir, repoUrl)}>
-            Continue to Firebase
-          </Button>
+          <Button onClick={() => onProjectCreated(projectName, appDir)}>Continue to GitHub</Button>
         </div>
       </Card>
     );
   }
 
-  if (phase === "running") {
+  if (phase === "running" || phase === "error") {
     return (
       <Card
-        title="Setting up your project…"
-        sub="Initializing git repository and creating GitHub repo."
+        title="Creating Firebase project…"
+        sub="Setting up your Firebase project for hosting and backend services."
       >
         <StageCard
-          name={`Setting up ${projectName}`}
+          name={`Firebase — ${projectName}`}
           status={stageStatus}
           lines={lines}
           open
         />
-        {stageStatus === "error" && (
-          <ErrorBanner errorInfo={errorInfo} onRetry={() => { setPhase("input"); setLines([]); setStageStatus("idle"); setErrorInfo(null); }} />
+        {phase === "error" && (
+          <ErrorBanner
+            errorInfo={errorInfo}
+            onRetry={start}
+            onBack={() => { setPhase("input"); setLines([]); setStageStatus("idle"); setErrorInfo(null); }}
+          />
         )}
       </Card>
     );
@@ -128,7 +131,7 @@ export default function ScratchSetup({ parentDir, onBack, onProjectCreated }) {
   return (
     <Card
       title="Let's set up your project"
-      sub="We'll create a local git repository and a private GitHub repo under this name. Firebase comes next."
+      sub="We'll create a Firebase project first to confirm the name is available, then set up your GitHub repository."
     >
       <div style={{ marginBottom: 20 }}>
         <label style={{ display: "block", marginBottom: 6, fontWeight: 500, fontSize: 14 }}>

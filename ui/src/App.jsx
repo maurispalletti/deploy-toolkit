@@ -290,10 +290,9 @@ export default function App() {
         <ScratchSetup
           parentDir={scratchParentDir}
           onBack={() => setStep(15)}
-          onProjectCreated={(name, dir, repo) => {
+          onProjectCreated={(name, dir) => {
             setScratchProjectName(name);
             setScratchAppDir(dir);
-            setScratchRepoUrl(repo);
             setStep(16);
           }}
         />
@@ -307,10 +306,14 @@ export default function App() {
       {step === 16 && (
         <GitHubSetup
           projectName={scratchProjectName}
-          appDir={scratchAppDir}
-          repoUrl={scratchRepoUrl}
+          parentDir={scratchParentDir}
           onBack={() => setStep(14)}
-          onDone={() => setStep(17)}
+          onDone={(name, dir, repo) => {
+            setScratchProjectName(name);
+            setScratchAppDir(dir);
+            setScratchRepoUrl(repo);
+            setStep(17);
+          }}
         />
       )}
       {step === 17 && (
