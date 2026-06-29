@@ -143,7 +143,7 @@ export default function Sidebar({ flow, currentStep, onNavigate, folderReady }) 
     <aside className="sidebar">
       <div className="sidebar-brand">
         <div className="brand-flame" />
-        <span className="brand-name">deploy-toolkit</span>
+        <span className="brand-name">Builders Toolkit</span>
       </div>
 
       <div className="sidebar-meta">

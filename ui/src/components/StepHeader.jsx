@@ -3,7 +3,7 @@ export default function StepHeader({ current, total = 7 }) {
     <>
       <div className="brand">
         <div className="brand-flame" />
-        <div className="brand-name">deploy-toolkit</div>
+        <div className="brand-name">Builders Toolkit</div>
       </div>
       <div className="steps">
         {Array.from({ length: total }, (_, i) => (
