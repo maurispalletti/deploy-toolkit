@@ -147,7 +147,7 @@ export default function App() {
         if (existingProject) {
           setAnswers(prev => ({ ...(prev ?? {}), existingProject: true, appName: existingProjectId }));
         }
-        next();
+        setStep(15);
       }}
           onScratch={(parentDir) => {
             setFlow("scratch");
@@ -167,7 +167,7 @@ export default function App() {
           onNext={next}
         />
       )}
-      {step === 3 && <Inspector appDir={appDir} onBack={back} onConfirm={(i) => {
+      {step === 3 && <Inspector appDir={appDir} onBack={() => setStep(15)} onConfirm={(i) => {
         setInspection(i);
         // Routing: prefer the block pages (DB incompat, then hardcoded
         // secrets) before the classify page, then Questions.
@@ -290,10 +290,9 @@ export default function App() {
         <ScratchSetup
           parentDir={scratchParentDir}
           onBack={() => setStep(15)}
-          onProjectCreated={(name, dir, repo) => {
+          onProjectCreated={(name, dir) => {
             setScratchProjectName(name);
             setScratchAppDir(dir);
-            setScratchRepoUrl(repo);
             setStep(16);
           }}
         />
@@ -301,16 +300,20 @@ export default function App() {
       {step === 15 && (
         <Prerequisites
           onBack={() => setStep(1)}
-          onNext={() => setStep(14)}
+          onNext={() => flow === "scratch" ? setStep(14) : setStep(3)}
         />
       )}
       {step === 16 && (
         <GitHubSetup
           projectName={scratchProjectName}
-          appDir={scratchAppDir}
-          repoUrl={scratchRepoUrl}
+          parentDir={scratchParentDir}
           onBack={() => setStep(14)}
-          onDone={() => setStep(17)}
+          onDone={(name, dir, repo) => {
+            setScratchProjectName(name);
+            setScratchAppDir(dir);
+            setScratchRepoUrl(repo);
+            setStep(17);
+          }}
         />
       )}
       {step === 17 && (

@@ -7,12 +7,16 @@ Built for non-developers running small apps they didn't necessarily code by hand
 > **Heads up:** this isn't a hosting service or a website you sign up for. It's a small tool you run on your own computer. It talks to Google's Firebase on your behalf — your code never goes through us.
 
 ```bash
-./deploy-app /path/to/your/app
+./deploy-app
 ```
 
-A browser tab opens with a wizard. You answer a few plain-language questions ("does your app need to remember things?", "will users sign in?"). The wizard handles the rest — creates a free workspace on Google's servers, sets up the database and sign-in if you need them, builds your app, and puts it on the internet. You end with a URL like `your-app.web.app` you can share with anyone.
+A browser tab opens. You pick a folder, then choose what you want to do:
 
-After that first command, you don't need the terminal again.
+- **Continue this project** — picks up a previous run (successful, failed, or mid-way) and lets you re-deploy or enable new Firebase services like a database or sign-in.
+- **Publish an existing app** — runs the full wizard on the folder you picked. You answer a few plain-language questions ("does your app need to remember things?", "will users sign in?") and the wizard handles the rest — creates a free workspace on Google's servers, sets up the database and sign-in if you need them, builds your app, and puts it on the internet.
+- **Start from scratch** — creates a new subfolder inside the folder you picked, initialises a git repository, creates a private GitHub repo, then runs the same wizard as above.
+
+You end with a URL like `your-app.web.app` you can share with anyone. After that first command, you don't need the terminal again.
 
 ---
 
@@ -46,7 +50,7 @@ cd deploy-toolkit
 ./deploy-app
 ```
 
-That's it. A browser tab opens. Pick your app folder, answer the questions, watch the colored checkmarks. You'll have a live URL in about 2 minutes.
+That's it. A browser tab opens. Pick a folder, choose whether to continue an existing project, publish an existing app, or start from scratch — then answer a few questions and watch the checkmarks turn green. You'll have a live URL in about 2 minutes.
 
 For the complete walkthrough — every wizard page, every question, every "what does this mean?", and what to do if anything goes wrong — see **[docs/USER_GUIDE.md](docs/USER_GUIDE.md)**.
 

@@ -66,16 +66,16 @@ const SCRATCH_STEPS = [
     internalSteps: [15],
   },
   {
-    id: "github",
-    label: "GitHub",
-    desc: "Init git repo and create GitHub repository",
+    id: "firebase",
+    label: "Firebase",
+    desc: "Create Firebase project",
     targetStep: 14,
     internalSteps: [14],
   },
   {
-    id: "firebase",
-    label: "Firebase",
-    desc: "Create Firebase project",
+    id: "github",
+    label: "GitHub",
+    desc: "Init git repo and create GitHub repository",
     targetStep: 16,
     internalSteps: [16],
   },
@@ -143,7 +143,7 @@ export default function Sidebar({ flow, currentStep, onNavigate, folderReady }) 
     <aside className="sidebar">
       <div className="sidebar-brand">
         <div className="brand-flame" />
-        <span className="brand-name">deploy-toolkit</span>
+        <span className="brand-name">Builders Toolkit</span>
       </div>
 
       <div className="sidebar-meta">

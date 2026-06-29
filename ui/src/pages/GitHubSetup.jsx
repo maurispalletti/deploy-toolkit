@@ -2,23 +2,16 @@ import { useEffect, useState } from "react";
 import Card from "../components/Card.jsx";
 import Button from "../components/Button.jsx";
 import StageCard from "../components/StageCard.jsx";
-import { runInitGithub } from "../api.js";
+import { runInitProject } from "../api.js";
 
 const ERROR_GUIDANCE = {
-  PROJECT_QUOTA_EXCEEDED: {
-    action: "Delete unused projects",
-    href: "https://console.cloud.google.com/iam-admin/projects",
-    retryLabel: "Try again",
-  },
-  PROJECT_ID_TAKEN: {
+  GITHUB_REPO_EXISTS: {
     retryLabel: "Go back and pick a different name",
     goBack: true,
   },
-  NEEDS_BOOTSTRAP: {
-    retryLabel: "Try again",
-  },
-  FIREBASE_CREATE_FAILED: {
-    retryLabel: "Try again",
+  GITHUB_AUTH_FAILED: {
+    retryLabel: "Go back and sign in",
+    goBack: true,
   },
 };
 
@@ -30,7 +23,7 @@ function ErrorBanner({ errorInfo, onRetry, onBack }) {
       <div className="warning-banner">
         <div className="warning-icon">✗</div>
         <div className="warning-body">
-          <div className="warning-title">Firebase setup failed</div>
+          <div className="warning-title">GitHub setup failed</div>
           <div className="warning-text">
             {message}
             {guidance.href && (
@@ -43,31 +36,34 @@ function ErrorBanner({ errorInfo, onRetry, onBack }) {
         {guidance.goBack ? (
           <Button variant="secondary" onClick={onBack}>{guidance.retryLabel}</Button>
         ) : (
-          <Button variant="secondary" onClick={onRetry}>{guidance.retryLabel ?? "Try again"}</Button>
+          <Button variant="secondary" onClick={onRetry}>{guidance?.retryLabel ?? "Try again"}</Button>
         )}
       </div>
     </div>
   );
 }
 
-export default function GitHubSetup({ projectName, appDir, repoUrl, onBack, onDone }) {
+export default function GitHubSetup({ projectName, parentDir, onBack, onDone }) {
   const [phase, setPhase] = useState("running"); // "running" | "done" | "error"
   const [lines, setLines] = useState([]);
   const [stageStatus, setStageStatus] = useState("running");
   const [errorInfo, setErrorInfo] = useState(null);
+  const [result, setResult] = useState(null);
 
   async function run() {
     setPhase("running");
     setStageStatus("running");
     setLines([]);
     setErrorInfo(null);
-    const { exitCode } = await runInitGithub(appDir, projectName, {
+    let scratchResult = null;
+    const { exitCode } = await runInitProject(parentDir, projectName, {
       onLog: (line) => setLines(l => [...l, line]),
-      onFirebaseDone: () => {},
+      onScratchDone: (data) => { scratchResult = data; },
       onError: (err) => { setErrorInfo(err); setStageStatus("error"); },
     });
     if (exitCode === 0) {
       setStageStatus("done");
+      setResult(scratchResult);
       setPhase("done");
     } else {
       setStageStatus("error");
@@ -78,20 +74,30 @@ export default function GitHubSetup({ projectName, appDir, repoUrl, onBack, onDo
   useEffect(() => { run(); }, []);
 
   if (phase === "done") {
-    const firebaseUrl = `https://console.firebase.google.com/project/${projectName}`;
+    const appDir = result?.appDir || `${parentDir}/${projectName}`;
+    const repoUrl = result?.repoUrl || "";
     return (
-      <Card title="Firebase project created">
+      <Card title="GitHub repository created">
         <p className="card-sub">
-          Firebase project is ready. Next we'll scaffold your app.
+          Your local git repo is initialised and the code is pushed to GitHub.
+          Next we'll scaffold your app.
         </p>
-        <div style={{ margin: "12px 0" }}>
-          <span className="muted">Firebase:&nbsp;</span>
-          <a className="link" href={firebaseUrl} target="_blank" rel="noreferrer">
-            {firebaseUrl}
-          </a>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, margin: "16px 0" }}>
+          <div>
+            <span className="muted">Folder:&nbsp;</span>
+            <code className="codepath">{appDir}</code>
+          </div>
+          {repoUrl && (
+            <div>
+              <span className="muted">GitHub:&nbsp;</span>
+              <a className="link" href={repoUrl} target="_blank" rel="noreferrer">{repoUrl}</a>
+            </div>
+          )}
         </div>
         <div className="btn-row">
-          <Button onClick={() => onDone(appDir)}>Continue to scaffold</Button>
+          <Button onClick={() => onDone(result?.projectName || projectName, appDir, repoUrl)}>
+            Continue to scaffold
+          </Button>
         </div>
       </Card>
     );
@@ -99,16 +105,16 @@ export default function GitHubSetup({ projectName, appDir, repoUrl, onBack, onDo
 
   return (
     <Card
-      title="Creating Firebase project…"
-      sub="Setting up your Firebase project for hosting and backend services."
+      title="Creating GitHub repository…"
+      sub="Initialising git repository and pushing to GitHub."
     >
       <StageCard
-        name={`Firebase — ${projectName}`}
+        name={`GitHub — ${projectName}`}
         status={stageStatus}
         lines={lines}
         open
       />
-      {(phase === "error") && (
+      {phase === "error" && (
         <ErrorBanner
           errorInfo={errorInfo}
           onRetry={run}

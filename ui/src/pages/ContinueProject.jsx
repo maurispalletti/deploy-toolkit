@@ -109,7 +109,7 @@ export default function ContinueProject({ appDir, plan: initialPlan, onBack, onQ
           <div style={{ marginTop: 20 }}>
             <StatusRow
               state="pending"
-              title="Not yet deployed with deploy-toolkit"
+              title="Not yet deployed with Builders Toolkit"
               meta="This project has a repo but hasn't been deployed yet. Run the setup wizard to configure Firebase Hosting and publish it."
             />
           </div>

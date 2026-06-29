@@ -11,7 +11,13 @@ step() { printf "▸ %s\n" "$1"; }
 info() { printf "  %s\n" "$1"; }
 toolkit_error() { printf "DEPLOY_TOOLKIT_ERROR:%s:%s\n" "$1" "$2"; }
 
+mkdir -p "$APP_DIR"
 cd "$APP_DIR"
+
+FIREBASE_ACCOUNT=$(firebase login:list 2>/dev/null | grep -oE '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' | head -1 || true)
+if [ -n "$FIREBASE_ACCOUNT" ]; then
+  info "Signed in as $FIREBASE_ACCOUNT"
+fi
 
 step "Creating Firebase project"
 PROJECT_LIST_JSON=$(firebase projects:list --json 2>/dev/null || true)
