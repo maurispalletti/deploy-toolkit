@@ -27,7 +27,7 @@ if firebase --version &>/dev/null; then npm update -g firebase-tools; else npm i
 firebase --version
 
 echo "--- GitHub auth ---"
-gh auth status || (echo "Not logged in. Run: gh auth login" && exit 1)
+gh auth status || gh auth login --web
 
 echo "--- Firebase auth ---"
 firebase projects:list || (echo "Not logged in. Run: firebase login" && exit 1)
