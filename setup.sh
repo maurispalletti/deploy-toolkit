@@ -11,15 +11,15 @@ else
 fi
 
 echo "--- git ---"
-if git --version &>/dev/null; then brew upgrade git || true; else brew install git; fi
+if git --version &>/dev/null; then brew upgrade git 2>/dev/null || true; else brew install git; fi
 git --version
 
 echo "--- gh ---"
-if gh --version &>/dev/null; then brew upgrade gh || true; else brew install gh; fi
+if gh --version &>/dev/null; then brew upgrade gh 2>/dev/null || true; else brew install gh; fi
 gh --version
 
 echo "--- node ---"
-if node --version &>/dev/null; then brew upgrade node || true; else brew install node; fi
+if node --version &>/dev/null; then brew upgrade node 2>/dev/null || true; else brew install node; fi
 node --version
 
 echo "--- firebase ---"
