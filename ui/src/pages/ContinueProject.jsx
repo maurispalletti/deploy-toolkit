@@ -44,7 +44,14 @@ export default function ContinueProject({ appDir, plan: initialPlan, onBack, onQ
   return (
     <Card
       title="Welcome back"
-      sub={<span className="codepath">{appDir}</span>}
+      sub={
+        <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <span className="codepath">{appDir}</span>
+          <a className="link" href={`vscode://file/${appDir}`} style={{ fontSize: 12 }}>
+            Open in VS Code
+          </a>
+        </span>
+      }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {projectId ? (
