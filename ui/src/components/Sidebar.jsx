@@ -93,6 +93,20 @@ const SCRATCH_STEPS = [
     targetStep: 18,
     internalSteps: [18],
   },
+  {
+    id: "deploy",
+    label: "Deploy",
+    desc: "Provision, build and publish your app",
+    targetStep: 6,
+    internalSteps: [6, 8],
+  },
+  {
+    id: "done",
+    label: "Done",
+    desc: "Your app is live — grab the URL",
+    targetStep: 7,
+    internalSteps: [7],
+  },
 ];
 
 const CONTINUE_STEPS = [

@@ -12,10 +12,16 @@ const IDES = [
 
 export default function OpenInIDE({ appDir, onDone }) {
   const [opened, setOpened] = useState(null);
+  const [finishing, setFinishing] = useState(false);
 
   async function open(id) {
     await postOpenInIDE(id, appDir);
     setOpened(id);
+  }
+
+  async function finish() {
+    setFinishing(true);
+    await onDone();
   }
 
   return (
@@ -49,8 +55,8 @@ export default function OpenInIDE({ appDir, onDone }) {
       </div>
 
       <div className="btn-row">
-        <Button onClick={onDone}>
-          {opened ? "Done" : "Skip"}
+        <Button onClick={finish} disabled={finishing}>
+          {finishing ? "Setting up your live app…" : opened ? "Done" : "Skip"}
         </Button>
       </div>
     </Card>

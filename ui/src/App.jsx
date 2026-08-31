@@ -19,7 +19,7 @@ import SecretsClassify from "./pages/SecretsClassify.jsx";
 import AuthScaffoldChoice from "./pages/AuthScaffoldChoice.jsx";
 import AuthRefactorPrompt from "./pages/AuthRefactorPrompt.jsx";
 import ContinueProject from "./pages/ContinueProject.jsx";
-import { getAppDir } from "./api.js";
+import { getAppDir, postPlan } from "./api.js";
 
 // Wizard step ID map. The history of these numbers is sticky — earlier
 // commits already wired up 1..9 — so we just keep appending for new
@@ -330,14 +330,26 @@ export default function App() {
       {step === 18 && (
         <OpenInIDE
           appDir={scratchAppDir}
-          onDone={() => {
+          onDone={async () => {
             if (openInIDEFrom !== null) {
               setStep(openInIDEFrom);
               setOpenInIDEFrom(null);
-            } else {
-              setAppDir(scratchAppDir);
-              resetWizard();
+              return;
             }
+            // Natural end of the scratch flow: the app has only been
+            // scaffolded locally so far. Plan + deploy it for real so
+            // scratch lands on the same live-URL Done screen as the
+            // continue/existing flows, instead of just closing the wizard.
+            setAppDir(scratchAppDir);
+            const freshPlan = await postPlan(scratchAppDir, {
+              appName: scratchProjectName,
+              needsAuth: true,
+              needsDb: true,
+              shape: "B",
+            });
+            setPlan(freshPlan);
+            setProgressStages(null);
+            setStep(6);
           }}
         />
       )}

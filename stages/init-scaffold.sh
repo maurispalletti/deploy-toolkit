@@ -642,7 +642,17 @@ pkg.scripts = {
 fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
 "
 
-# ── 12. Commit ─────────────────────────────────────────────────────────────────
+# ── 12. Claude Code skills ────────────────────────────────────────────────────
+step "Adding Claude Code skills"
+TOOLKIT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+GH_USER=$(gh api user --jq '.login' 2>/dev/null || echo "")
+mkdir -p .claude/commands
+for skill in Develop Merge Describe; do
+  sed "s|{{GITHUB_REPO}}|${GH_USER}/${PROJECT_NAME}|g" \
+    "$TOOLKIT_DIR/templates/skills/${skill}.md" > ".claude/commands/${skill}.md"
+done
+
+# ── 13. Commit ─────────────────────────────────────────────────────────────────
 step "Committing scaffold"
 git add -A
 git commit -m "scaffold: Next.js 14 + Firebase auth + Firestore + Shadcn UI + TanStack Query"
